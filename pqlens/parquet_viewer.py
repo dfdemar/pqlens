@@ -89,7 +89,6 @@ def view_parquet_file(file_path):
     """
     Reads a Parquet file and returns its content as a DataFrame.
 
-
     :param file_path: Path to the Parquet file.
     :return: DataFrame containing the data from the Parquet file.
     """
