@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py -3.11 -m pytest tests/ -v)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

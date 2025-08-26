@@ -245,6 +245,40 @@ pqlens -t simple data.parquet
 - **tabulate**: Enhanced table formatting (fallback to basic display if missing)
 - **readchar**: Arrow key input for interactive mode (fallback to text input if missing)
 
+## Development
+
+### Running Tests
+
+The project includes a comprehensive test suite:
+
+```bash
+# Install development dependencies
+pip install .[dev]
+
+# Run all tests
+pytest tests/ -v
+
+# Run specific test files
+pytest tests/test_parquet_viewer.py -v
+pytest tests/test_cli.py -v
+pytest tests/test_package.py -v
+```
+
+**Test Coverage:**
+- Unit tests for core functions (`view_parquet_file`, `display_table`, `paged_display`)
+- Integration tests for CLI functionality
+- Package structure and import tests
+- Real behavior testing with actual Parquet files (no mocks)
+
+### Test Data
+
+Test files are automatically generated and include:
+- Simple datasets with basic data types
+- Empty datasets
+- Large datasets (100+ rows) for pagination testing
+- Wide datasets (20+ columns) for horizontal scrolling
+- Mixed data types with nullable dtypes (`Int64`, `boolean`, `string`)
+
 ## Requirements
 
 - Python 3.11+

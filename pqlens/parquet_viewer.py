@@ -108,7 +108,7 @@ def display_table(df, rows=10):
     :param df: DataFrame to display
     :param rows: Number of rows to display
     """
-    if not df or df.empty:
+    if df is None:
         print("No data to display")
         return
 
