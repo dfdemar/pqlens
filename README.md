@@ -17,15 +17,31 @@ A Python command-line tool for viewing and exploring Parquet files with interact
 
 - Python 3.11 or higher
 
-### Setup
+### Install from Source
 
 1. Clone or download this repository
-2. Create a virtual environment:
+2. Install the package:
+   ```bash
+   # Install with basic functionality
+   pip install .
+   
+   # Install with interactive features (recommended)
+   pip install .[interactive]
+   
+   # Install in development mode (editable)
+   pip install -e .[interactive]
+   ```
+
+### Alternative: Manual Setup
+
+If you prefer not to install as a package:
+
+1. Create a virtual environment:
    ```bash
    python -m venv .venv
    ```
 
-3. Activate the virtual environment:
+2. Activate the virtual environment:
    ```bash
    # On Windows
    .venv\Scripts\activate
@@ -34,7 +50,7 @@ A Python command-line tool for viewing and exploring Parquet files with interact
    source .venv/bin/activate
    ```
 
-4. Install required dependencies:
+3. Install required dependencies:
    ```bash
    pip install pandas pyarrow tabulate readchar
    ```
@@ -43,22 +59,42 @@ A Python command-line tool for viewing and exploring Parquet files with interact
 
 ### Basic Usage
 
+After installation, you can use `pqlens` as a command:
+
 ```bash
 # View first 10 rows of a Parquet file
-python ./pqlens/parquet_viewer.py /path/to/file.parquet
+pqlens /path/to/file.parquet
+
+# Or using Python module syntax
+python -m pqlens /path/to/file.parquet
 
 # View first 20 rows
-python ./pqlens/parquet_viewer.py -n 20 /path/to/file.parquet
+pqlens -n 20 /path/to/file.parquet
 
 # Use a different table format
-python ./pqlens/parquet_viewer.py --table-format fancy_grid /path/to/file.parquet
+pqlens --table-format github /path/to/file.parquet
+
+# Check version
+pqlens --version
 ```
 
 ### Interactive Mode
 
 ```bash
 # Enable interactive navigation
-python ./pqlens/parquet_viewer.py --interactive /path/to/file.parquet
+pqlens --interactive /path/to/file.parquet
+
+# Interactive mode with more rows per page
+pqlens -i -n 25 /path/to/file.parquet
+```
+
+### Alternative: Direct Script Usage
+
+If not installed as a package, you can still run the script directly:
+
+```bash
+# Direct script usage (manual setup only)
+python ./pqlens/parquet_viewer.py /path/to/file.parquet
 ```
 
 In interactive mode, use these controls:
@@ -175,28 +211,28 @@ The `--table-format` option supports the following styles:
 ### Viewing a Dataset
 ```bash
 # Basic view - see file structure and first 10 rows
-python ./pqlens/parquet_viewer.py data.parquet
+pqlens data.parquet
 ```
 
 ### Exploring Large Files
 ```bash
 # Interactive mode for large datasets
-python ./pqlens/parquet_viewer.py --interactive large_dataset.parquet
+pqlens --interactive large_dataset.parquet
 
 # Show more rows at once
-python ./pqlens/parquet_viewer.py -i -n 25 large_dataset.parquet
+pqlens -i -n 25 large_dataset.parquet
 ```
 
 ### Different Formats
 ```bash
 # Clean GitHub-style table
-python ./pqlens/parquet_viewer.py -t github data.parquet
+pqlens -t github data.parquet
 
-# Fancy Unicode borders
-python ./pqlens/parquet_viewer.py -t fancy_grid data.parquet
+# Fancy Unicode borders (may have encoding issues on some Windows terminals)
+pqlens -t fancy_grid data.parquet
 
 # Simple format for copy-pasting
-python ./pqlens/parquet_viewer.py -t simple data.parquet
+pqlens -t simple data.parquet
 ```
 
 ## Dependencies

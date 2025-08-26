@@ -336,7 +336,8 @@ def paged_display(df, page_size=10, table_format='grid'):
                 break
 
 
-if __name__ == "__main__":
+def main():
+    """Main function for command-line usage."""
     import argparse
 
     parser = argparse.ArgumentParser(description='View Parquet file content')
@@ -367,3 +368,7 @@ if __name__ == "__main__":
             formatted_table = tabulate(result_df.head(args.rows), headers=result_df.columns,
                                        tablefmt=args.table_format, showindex=True)
             print(formatted_table)
+
+
+if __name__ == "__main__":
+    main()
