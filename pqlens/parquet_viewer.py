@@ -149,7 +149,7 @@ def paged_display(df, page_size=10, table_format='grid'):
     total_pages = (total_rows + page_size - 1) // page_size  # Ceiling division
 
     # Navigation state
-    current_page = 0  # Current vertical page (rows)
+    start_row = 0  # Starting row index (for single row scrolling)
     left_col_idx = 0  # Leftmost visible data column (0-indexed, not counting row numbers)
 
     # Print summary information once at the beginning
@@ -183,29 +183,31 @@ def paged_display(df, page_size=10, table_format='grid'):
 
         return visible_cols
 
-    def display_current_page():
-        """Helper function to display the current page with horizontal scrolling"""
+    def display_current_view():
+        """Helper function to display the current view with both horizontal and vertical scrolling"""
         # Clear screen using ANSI escape codes
         print("\033[H\033[J", end="")
 
-        # Get row indices for current page
-        start_idx = current_page * page_size
-        end_idx = min(start_idx + page_size, total_rows)
+        # Get row indices for current view
+        end_idx = min(start_row + page_size, total_rows)
+
+        # Calculate current page number for display purposes
+        current_page = start_row // page_size
 
         # Get columns that fit in the current terminal width
         visible_cols = get_visible_columns()
 
         # Display page header and navigation info
-        print(f"\n--- Showing rows {start_idx + 1}-{end_idx} of {total_rows} (Page {current_page + 1}/{total_pages}) ---")
+        print(f"\n--- Showing rows {start_row + 1}-{end_idx} of {total_rows} (Page {current_page + 1}/{total_pages}) ---")
         col_range_text = f"Columns {left_col_idx + 1}-{left_col_idx + len(visible_cols)} of {total_cols}"
-        print(f"Navigation: ↑↓ Page Up/Down | ←→ Scroll Columns | q Quit | {col_range_text}\n")
+        print(f"Navigation: ↑↓ Move one row | Page Up/Down: Move full page | ←→ Scroll Columns | q Quit | {col_range_text}\n")
 
-        # Get current page data
-        page_df = df.iloc[start_idx:end_idx]
+        # Get current view data
+        view_df = df.iloc[start_row:end_idx]
 
         # Select only visible columns for display
         if visible_cols:  # If we have any visible data columns
-            display_df = page_df.iloc[:, visible_cols]
+            display_df = view_df.iloc[:, visible_cols]
             try:
                 # Format the DataFrame to control column widths
                 # First, truncate any long values in the display DataFrame
@@ -232,14 +234,11 @@ def paged_display(df, page_size=10, table_format='grid'):
                 print(display_df)
         else:
             # If no data columns can be displayed, just show row numbers
-            print(tabulate([], headers=[], tablefmt=table_format, showindex=page_df.index))
+            print(tabulate([], headers=[], tablefmt=table_format, showindex=view_df.index))
             print("\nTerminal too narrow to display any data columns. Resize terminal or use horizontal scrolling.")
 
-    # Initial page display
-    display_current_page()
-
-    # Initial page display
-    display_current_page()
+    # Initial view display
+    display_current_view()
 
     if has_readchar:
         # Main interaction loop using arrow keys
@@ -253,46 +252,56 @@ def paged_display(df, page_size=10, table_format='grid'):
                 right_keys = ('l', ' ')  # Right arrow alternatives
                 left_keys = ('h', 'b')  # Left arrow alternatives
 
-                # Vertical scrolling - DOWN arrow
+                # Single row scrolling - DOWN arrow
                 if hasattr(readchar, 'key') and hasattr(readchar.key, 'DOWN') and key == readchar.key.DOWN:
-                    if current_page < total_pages - 1:
-                        current_page += 1
-                        display_current_page()
+                    if start_row < total_rows - 1:  # Not at the last row
+                        start_row += 1
+                        display_current_view()
                 # Alternative down keys
                 elif key in down_keys:
-                    if current_page < total_pages - 1:
-                        current_page += 1
-                        display_current_page()
-                # Vertical scrolling - UP arrow
+                    if start_row < total_rows - 1:  # Not at the last row
+                        start_row += 1
+                        display_current_view()
+                # Single row scrolling - UP arrow
                 elif hasattr(readchar, 'key') and hasattr(readchar.key, 'UP') and key == readchar.key.UP:
-                    if current_page > 0:
-                        current_page -= 1
-                        display_current_page()
+                    if start_row > 0:  # Not at the first row
+                        start_row -= 1
+                        display_current_view()
                 # Alternative up keys
                 elif key in up_keys:
-                    if current_page > 0:
-                        current_page -= 1
-                        display_current_page()
+                    if start_row > 0:  # Not at the first row
+                        start_row -= 1
+                        display_current_view()
+                # Full page scrolling - Page Down
+                elif hasattr(readchar, 'key') and hasattr(readchar.key, 'PAGE_DOWN') and key == readchar.key.PAGE_DOWN:
+                    if start_row + page_size < total_rows:  # Not at the last page
+                        start_row = min(start_row + page_size, total_rows - page_size)
+                        display_current_view()
+                # Full page scrolling - Page Up
+                elif hasattr(readchar, 'key') and hasattr(readchar.key, 'PAGE_UP') and key == readchar.key.PAGE_UP:
+                    if start_row > 0:  # Not at the first page
+                        start_row = max(0, start_row - page_size)
+                        display_current_view()
                 # Horizontal scrolling - RIGHT arrow
                 elif hasattr(readchar, 'key') and hasattr(readchar.key, 'RIGHT') and key == readchar.key.RIGHT:
                     if left_col_idx < total_cols - 1:
                         left_col_idx += 1
-                        display_current_page()
+                        display_current_view()
                 # Alternative right keys
                 elif key in right_keys:
                     if left_col_idx < total_cols - 1:
                         left_col_idx += 1
-                        display_current_page()
+                        display_current_view()
                 # Horizontal scrolling - LEFT arrow
                 elif hasattr(readchar, 'key') and hasattr(readchar.key, 'LEFT') and key == readchar.key.LEFT:
                     if left_col_idx > 0:
                         left_col_idx -= 1
-                        display_current_page()
+                        display_current_view()
                 # Alternative left keys
                 elif key in left_keys:
                     if left_col_idx > 0:
                         left_col_idx -= 1
-                        display_current_page()
+                        display_current_view()
                 # Quit keys
                 elif key in ('q', 'Q', '\x03'):  # q, Q or Ctrl+C
                     print("\nExiting interactive mode.")
@@ -305,19 +314,23 @@ def paged_display(df, page_size=10, table_format='grid'):
         # Fallback to simplified keyboard navigation if readchar is not available
         while True:
             try:
-                user_input = input("\nNavigation: [n]ext page, [p]revious page, [r]ight, [l]eft, [q]uit: ").lower()
+                user_input = input("\nNavigation: [n]ext row, [p]revious row, [f]orward page, [b]ack page, [r]ight column, [l]eft column, [q]uit: ").lower()
                 if user_input == 'q':
                     print("\nExiting interactive mode.")
                     break
-                elif user_input == 'p' and current_page > 0:
-                    current_page -= 1
-                elif user_input == 'n' and current_page < total_pages - 1:
-                    current_page += 1
-                elif user_input == 'r' and left_col_idx < total_cols - 1:
+                elif user_input == 'p' and start_row > 0:  # Previous row
+                    start_row -= 1
+                elif user_input == 'n' and start_row < total_rows - 1:  # Next row
+                    start_row += 1
+                elif user_input == 'b' and start_row > 0:  # Page back
+                    start_row = max(0, start_row - page_size)
+                elif user_input == 'f' and start_row < total_rows - page_size:  # Page forward
+                    start_row = min(start_row + page_size, total_rows - 1)
+                elif user_input == 'r' and left_col_idx < total_cols - 1:  # Right column
                     left_col_idx += 1
-                elif user_input == 'l' and left_col_idx > 0:
+                elif user_input == 'l' and left_col_idx > 0:  # Left column
                     left_col_idx -= 1
-                display_current_page()
+                display_current_view()
             except (EOFError, KeyboardInterrupt):
                 print("\nDisplay stopped.")
                 break
@@ -328,7 +341,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='View Parquet file content')
     parser.add_argument('file_path', nargs='?', default='.samples/weather.parquet', help='Path to the parquet file')
-    parser.add_argument('-n', '--rows', type=int, default=5, help='Number of rows to display')
+    parser.add_argument('-n', '--rows', type=int, default=10, help='Number of rows to display')
     parser.add_argument('-i', '--interactive', action='store_true', help='Enable interactive mode with arrow key navigation')
     parser.add_argument('-t', '--table-format', choices=['plain', 'simple', 'github', 'grid', 'fancy_grid', 'pipe', 'orgtbl', 'jira'],
                         default='grid', help='Table format style')
