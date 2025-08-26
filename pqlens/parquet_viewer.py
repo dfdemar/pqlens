@@ -12,7 +12,7 @@ Setup:
    $ source .venv/Scripts/activate
 
    # Install required packages
-   $ pip install pandas pyarrow tabulate
+   $ pip install pandas pyarrow tabulate readchar
 
 Usage:
    $ python ./pqlens/parquet_viewer.py /path/to/file.parquet
@@ -20,7 +20,10 @@ Usage:
    # Show first 10 rows
    $ python ./pqlens/parquet_viewer.py -n 10 /path/to/file.parquet
 
-   # Interactive mode with scrolling
+   # Interactive mode with arrow key navigation
+   # - Use DOWN arrow to go to next page
+   # - Use UP arrow to go to previous page
+   # - Press 'q' to quit
    $ python ./pqlens/parquet_viewer.py --interactive /path/to/file.parquet
 
    # Use fancy grid table format
@@ -46,7 +49,7 @@ def check_package(package_name):
 
 # Check for required packages
 required_packages = ["pandas", "pyarrow"]
-optional_packages = ["tabulate"]
+optional_packages = ["tabulate", "readchar"]
 
 # Check required packages first
 missing_required = [pkg for pkg in required_packages if not check_package(pkg)]
@@ -64,16 +67,22 @@ import pandas as pd
 try:
     from tabulate import tabulate
 except ImportError:
-    def tabulate(data_table, **format_kwargs):
+    def tabulate(data_rows, headers=None, tablefmt='grid', showindex=False):
         # Fallback for when tabulate is not available
         return "tabulate not installed. Install with: pip install tabulate"
 
-# Import other packages
+# Import other packages for terminal input
+has_readchar = False
+readchar = None
 try:
-    import curses
+    import readchar
+
+    # Test if the key module exists and works
+    if hasattr(readchar, 'readkey'):
+        has_readchar = True
 except ImportError:
-    print("Curses module not available. Interactive mode will be disabled.")
-    curses = None
+    print("readchar module not available. Install with: pip install readchar")
+    print("Arrow key navigation disabled in interactive mode.")
 
 
 def view_parquet_file(file_path):
@@ -114,7 +123,7 @@ def display_table(df, rows=10):
 
 def paged_display(df, page_size=10, table_format='grid'):
     """
-    Display DataFrame in pages without requiring user interaction.
+    Display DataFrame in pages with arrow key navigation.
 
     :param df: DataFrame to display
     :param page_size: Number of rows to show per page
@@ -126,32 +135,88 @@ def paged_display(df, page_size=10, table_format='grid'):
 
     total_rows = len(df)
     total_pages = (total_rows + page_size - 1) // page_size  # Ceiling division
+    current_page = 0
 
-    # Print summary information
+    # Print summary information once at the beginning
     print(f"\nParquet file shape: {df.shape}")
     print(f"Column types:\n{df.dtypes}\n")
 
-    # Display all pages
-    for page in range(total_pages):
-        start_idx = page * page_size
+    def display_current_page():
+        """Helper function to display the current page"""
+        # Clear screen using ANSI escape codes
+        print("\033[H\033[J", end="")
+
+        start_idx = current_page * page_size
         end_idx = min(start_idx + page_size, total_rows)
 
         # Display page header
-        print(f"\n--- Showing rows {start_idx + 1}-{end_idx} of {total_rows} (Page {page + 1}/{total_pages}) ---\n")
+        print(
+            f"\n--- Showing rows {start_idx + 1}-{end_idx} of {total_rows} (Page {current_page + 1}/{total_pages}) ---")
+        print("Navigation: ↑ Previous page | ↓ Next page | q Quit\n")
 
         # Display current page data as a formatted table
         page_df = df.iloc[start_idx:end_idx]
         try:
-            formatted_table = tabulate(page_df, headers=df.columns, tablefmt=table_format, showindex=True)
-            print(formatted_table)
-        except Exception as e:
+            table_output = tabulate(page_df, headers=df.columns, tablefmt=table_format, showindex=True)
+            print(table_output)
+        except Exception:
             # Fallback to basic DataFrame display if tabulate fails
             print(page_df)
 
-        # If not the last page, prompt to continue
-        if page < total_pages - 1:
+    # Initial page display
+    display_current_page()
+
+    if has_readchar:
+        # Main interaction loop using arrow keys
+        while True:
             try:
-                input("\nPress Enter for next page (Ctrl+C to stop)...")
+                key = readchar.readkey()
+
+                # Arrow keys and alternative keys for navigation
+                down_keys = ('j', 'n')  # Down arrow alternatives
+                up_keys = ('k', 'p')  # Up arrow alternatives
+
+                # Check for down arrow or alternatives
+                if hasattr(readchar, 'key') and hasattr(readchar.key, 'DOWN') and key == readchar.key.DOWN:
+                    if current_page < total_pages - 1:
+                        current_page += 1
+                        display_current_page()
+                # Check for alternative down keys
+                elif key in down_keys:
+                    if current_page < total_pages - 1:
+                        current_page += 1
+                        display_current_page()
+                # Check for up arrow
+                elif hasattr(readchar, 'key') and hasattr(readchar.key, 'UP') and key == readchar.key.UP:
+                    if current_page > 0:
+                        current_page -= 1
+                        display_current_page()
+                # Check for alternative up keys
+                elif key in up_keys:
+                    if current_page > 0:
+                        current_page -= 1
+                        display_current_page()
+                # Check for quit keys
+                elif key in ('q', 'Q', '\x03'):  # q, Q or Ctrl+C
+                    print("\nExiting interactive mode.")
+                    break
+            except (AttributeError, TypeError):
+                # Fallback if readchar is imported but key reading fails
+                print("\nError reading keys. Exiting interactive mode.")
+                break
+    else:
+        # Fallback to Enter key navigation if readchar is not available
+        while current_page < total_pages - 1:
+            try:
+                user_input = input("\nPress Enter for next page, 'p' for previous page, 'q' to quit: ").lower()
+                if user_input == 'q':
+                    print("\nExiting interactive mode.")
+                    break
+                elif user_input == 'p' and current_page > 0:
+                    current_page -= 1
+                else:
+                    current_page += 1
+                display_current_page()
             except (EOFError, KeyboardInterrupt):
                 print("\nDisplay stopped.")
                 break
@@ -161,11 +226,10 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='View Parquet file content')
-    parser.add_argument('file_path', nargs='?',
-                        default='.samples/weather.parquet',
-                        help='Path to the parquet file')
+    parser.add_argument('file_path', nargs='?', default='.samples/weather.parquet', help='Path to the parquet file')
     parser.add_argument('-n', '--rows', type=int, default=5, help='Number of rows to display')
-    parser.add_argument('-i', '--interactive', action='store_true', help='Enable interactive mode with scrolling')
+    parser.add_argument('-i', '--interactive', action='store_true',
+                        help='Enable interactive mode with arrow key navigation')
     parser.add_argument('-t', '--table-format',
                         choices=['plain', 'simple', 'github', 'grid', 'fancy_grid', 'pipe', 'orgtbl', 'jira'],
                         default='grid', help='Table format style')
