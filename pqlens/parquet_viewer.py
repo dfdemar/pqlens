@@ -21,8 +21,9 @@ Usage:
    $ python ./pqlens/parquet_viewer.py -n 10 /path/to/file.parquet
 
    # Interactive mode with arrow key navigation
-   # - Use DOWN arrow to go to next page
-   # - Use UP arrow to go to previous page
+   # - UP/DOWN arrows: Navigate between pages of rows
+   # - LEFT/RIGHT arrows: Scroll through columns horizontally
+   #   (row numbers column always stays visible)
    # - Press 'q' to quit
    $ python ./pqlens/parquet_viewer.py --interactive /path/to/file.parquet
 
@@ -30,6 +31,7 @@ Usage:
    $ python ./pqlens/parquet_viewer.py --table-format fancy_grid /path/to/file.parquet
 """
 
+import shutil  # For getting terminal size
 import sys
 
 
@@ -132,35 +134,88 @@ def paged_display(df, page_size=10, table_format='grid'):
         print("No data to display")
         return
 
+    # Get terminal dimensions
+    terminal_width, terminal_height = shutil.get_terminal_size()
+
+    # Constants for display formatting
+    min_col_width = 10  # Minimum column width in characters
+    row_num_width = 6  # Fixed width for row numbers column
+    separator_width = 3  # Width of column separators in table
+
     total_rows = len(df)
+    total_cols = len(df.columns)
     total_pages = (total_rows + page_size - 1) // page_size  # Ceiling division
-    current_page = 0
+
+    # Navigation state
+    current_page = 0  # Current vertical page (rows)
+    left_col_idx = 0  # Leftmost visible data column (0-indexed, not counting row numbers)
 
     # Print summary information once at the beginning
     print(f"\nParquet file shape: {df.shape}")
     print(f"Column types:\n{df.dtypes}\n")
 
+    def get_visible_columns():
+        """Determine which columns can fit in the current terminal width"""
+        # Start with the row number column which is always visible
+        available_width = terminal_width - row_num_width - separator_width
+
+        visible_cols = []
+        col_idx = left_col_idx  # Start from current horizontal scroll position
+
+        # Add columns until we run out of space
+        while col_idx < total_cols and available_width > min_col_width:
+            col_name = df.columns[col_idx]
+            # Estimate column width (max of column name and typical data width)
+            col_width = max(len(str(col_name)), min_col_width) + separator_width
+
+            if available_width >= col_width:
+                visible_cols.append(col_idx)
+                available_width -= col_width
+                col_idx += 1
+            else:
+                break
+
+        return visible_cols
+
     def display_current_page():
-        """Helper function to display the current page"""
+        """Helper function to display the current page with horizontal scrolling"""
         # Clear screen using ANSI escape codes
         print("\033[H\033[J", end="")
 
+        # Get row indices for current page
         start_idx = current_page * page_size
         end_idx = min(start_idx + page_size, total_rows)
 
-        # Display page header
+        # Get columns that fit in the current terminal width
+        visible_cols = get_visible_columns()
+
+        # Display page header and navigation info
         print(
             f"\n--- Showing rows {start_idx + 1}-{end_idx} of {total_rows} (Page {current_page + 1}/{total_pages}) ---")
-        print("Navigation: ↑ Previous page | ↓ Next page | q Quit\n")
+        col_range_text = f"Columns {left_col_idx + 1}-{left_col_idx + len(visible_cols)} of {total_cols}"
+        print(f"Navigation: ↑↓ Page Up/Down | ←→ Scroll Columns | q Quit | {col_range_text}\n")
 
-        # Display current page data as a formatted table
+        # Get current page data
         page_df = df.iloc[start_idx:end_idx]
-        try:
-            table_output = tabulate(page_df, headers=df.columns, tablefmt=table_format, showindex=True)
-            print(table_output)
-        except Exception:
-            # Fallback to basic DataFrame display if tabulate fails
-            print(page_df)
+
+        # Select only visible columns for display
+        if visible_cols:  # If we have any visible data columns
+            display_df = page_df.iloc[:, visible_cols]
+            try:
+                # Create table with row index (always visible) and visible columns
+                table_output = tabulate(display_df, headers=display_df.columns,
+                                        tablefmt=table_format, showindex=True)
+                print(table_output)
+            except Exception:
+                # Fallback to basic DataFrame display if tabulate fails
+                print(display_df)
+        else:
+            # If no data columns can be displayed, just show row numbers
+            print(tabulate([], headers=[], tablefmt=table_format, showindex=page_df.index))
+            print("\nTerminal too narrow to display any data columns. Resize terminal or use horizontal scrolling.")
+
+    # Initial page display
+    display_current_page()
 
     # Initial page display
     display_current_page()
@@ -171,31 +226,53 @@ def paged_display(df, page_size=10, table_format='grid'):
             try:
                 key = readchar.readkey()
 
-                # Arrow keys and alternative keys for navigation
+                # Map keys for navigation
                 down_keys = ('j', 'n')  # Down arrow alternatives
                 up_keys = ('k', 'p')  # Up arrow alternatives
+                right_keys = ('l', ' ')  # Right arrow alternatives
+                left_keys = ('h', 'b')  # Left arrow alternatives
 
-                # Check for down arrow or alternatives
+                # Vertical scrolling - DOWN arrow
                 if hasattr(readchar, 'key') and hasattr(readchar.key, 'DOWN') and key == readchar.key.DOWN:
                     if current_page < total_pages - 1:
                         current_page += 1
                         display_current_page()
-                # Check for alternative down keys
+                # Alternative down keys
                 elif key in down_keys:
                     if current_page < total_pages - 1:
                         current_page += 1
                         display_current_page()
-                # Check for up arrow
+                # Vertical scrolling - UP arrow
                 elif hasattr(readchar, 'key') and hasattr(readchar.key, 'UP') and key == readchar.key.UP:
                     if current_page > 0:
                         current_page -= 1
                         display_current_page()
-                # Check for alternative up keys
+                # Alternative up keys
                 elif key in up_keys:
                     if current_page > 0:
                         current_page -= 1
                         display_current_page()
-                # Check for quit keys
+                # Horizontal scrolling - RIGHT arrow
+                elif hasattr(readchar, 'key') and hasattr(readchar.key, 'RIGHT') and key == readchar.key.RIGHT:
+                    if left_col_idx < total_cols - 1:
+                        left_col_idx += 1
+                        display_current_page()
+                # Alternative right keys
+                elif key in right_keys:
+                    if left_col_idx < total_cols - 1:
+                        left_col_idx += 1
+                        display_current_page()
+                # Horizontal scrolling - LEFT arrow
+                elif hasattr(readchar, 'key') and hasattr(readchar.key, 'LEFT') and key == readchar.key.LEFT:
+                    if left_col_idx > 0:
+                        left_col_idx -= 1
+                        display_current_page()
+                # Alternative left keys
+                elif key in left_keys:
+                    if left_col_idx > 0:
+                        left_col_idx -= 1
+                        display_current_page()
+                # Quit keys
                 elif key in ('q', 'Q', '\x03'):  # q, Q or Ctrl+C
                     print("\nExiting interactive mode.")
                     break
@@ -204,17 +281,21 @@ def paged_display(df, page_size=10, table_format='grid'):
                 print("\nError reading keys. Exiting interactive mode.")
                 break
     else:
-        # Fallback to Enter key navigation if readchar is not available
-        while current_page < total_pages - 1:
+        # Fallback to simplified keyboard navigation if readchar is not available
+        while True:
             try:
-                user_input = input("\nPress Enter for next page, 'p' for previous page, 'q' to quit: ").lower()
+                user_input = input("\nNavigation: [n]ext page, [p]revious page, [r]ight, [l]eft, [q]uit: ").lower()
                 if user_input == 'q':
                     print("\nExiting interactive mode.")
                     break
                 elif user_input == 'p' and current_page > 0:
                     current_page -= 1
-                else:
+                elif user_input == 'n' and current_page < total_pages - 1:
                     current_page += 1
+                elif user_input == 'r' and left_col_idx < total_cols - 1:
+                    left_col_idx += 1
+                elif user_input == 'l' and left_col_idx > 0:
+                    left_col_idx -= 1
                 display_current_page()
             except (EOFError, KeyboardInterrupt):
                 print("\nDisplay stopped.")
