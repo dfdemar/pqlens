@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='View Parquet file content')
     parser.add_argument('file_path', nargs='?',
-                        default='.sample/weather.parquet',
+                        default='.samples/weather.parquet',
                         help='Path to the parquet file')
     parser.add_argument('-n', '--rows', type=int, default=5, help='Number of rows to display')
     parser.add_argument('-i', '--interactive', action='store_true', help='Enable interactive mode with scrolling')
