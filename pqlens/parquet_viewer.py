@@ -44,8 +44,7 @@ def check_package(package_name):
         print(f"ERROR: Missing required package '{package_name}'")
         print(f"Please install it using: pip install {package_name}")
         print(f"If using a system Python, you may need: python -m pip install --user {package_name}")
-        print(
-            f"Or use a virtual environment: python -m venv venv && source venv/bin/activate && pip install {package_name}")
+        print(f"Or use a virtual environment: python -m venv .venv && source .venv/Scripts/activate && pip install {package_name}")
         return False
 
 
@@ -109,7 +108,7 @@ def display_table(df, rows=10):
     :param df: DataFrame to display
     :param rows: Number of rows to display
     """
-    if df is None or df.empty:
+    if not df or df.empty:
         print("No data to display")
         return
 
@@ -139,8 +138,11 @@ def paged_display(df, page_size=10, table_format='grid'):
 
     # Constants for display formatting
     min_col_width = 10  # Minimum column width in characters
+    max_col_width = 100  # Maximum column width in characters
     row_num_width = 6  # Fixed width for row numbers column
     separator_width = 3  # Width of column separators in table
+    table_border_width = 4  # Width used by table borders
+    extra_space = 10  # A bit of extra space
 
     total_rows = len(df)
     total_cols = len(df.columns)
@@ -157,7 +159,7 @@ def paged_display(df, page_size=10, table_format='grid'):
     def get_visible_columns():
         """Determine which columns can fit in the current terminal width"""
         # Start with the row number column which is always visible
-        available_width = terminal_width - row_num_width - separator_width
+        available_width = terminal_width - row_num_width - separator_width - table_border_width - extra_space
 
         visible_cols = []
         col_idx = left_col_idx  # Start from current horizontal scroll position
@@ -165,8 +167,12 @@ def paged_display(df, page_size=10, table_format='grid'):
         # Add columns until we run out of space
         while col_idx < total_cols and available_width > min_col_width:
             col_name = df.columns[col_idx]
-            # Estimate column width (max of column name and typical data width)
-            col_width = max(len(str(col_name)), min_col_width) + separator_width
+            # Get sample values to estimate column width
+            sample_values = df.iloc[:min(10, len(df)), col_idx].astype(str)
+            max_data_width = sample_values.str.len().max() if len(sample_values) > 0 else 0
+
+            # Estimate column width (max of column name and data width, capped at max_col_width)
+            col_width = min(max(len(str(col_name)), max_data_width, min_col_width), max_col_width) + separator_width
 
             if available_width >= col_width:
                 visible_cols.append(col_idx)
@@ -190,8 +196,7 @@ def paged_display(df, page_size=10, table_format='grid'):
         visible_cols = get_visible_columns()
 
         # Display page header and navigation info
-        print(
-            f"\n--- Showing rows {start_idx + 1}-{end_idx} of {total_rows} (Page {current_page + 1}/{total_pages}) ---")
+        print(f"\n--- Showing rows {start_idx + 1}-{end_idx} of {total_rows} (Page {current_page + 1}/{total_pages}) ---")
         col_range_text = f"Columns {left_col_idx + 1}-{left_col_idx + len(visible_cols)} of {total_cols}"
         print(f"Navigation: ↑↓ Page Up/Down | ←→ Scroll Columns | q Quit | {col_range_text}\n")
 
@@ -202,9 +207,25 @@ def paged_display(df, page_size=10, table_format='grid'):
         if visible_cols:  # If we have any visible data columns
             display_df = page_df.iloc[:, visible_cols]
             try:
+                # Format the DataFrame to control column widths
+                # First, truncate any long values in the display DataFrame
+                formatted_df = display_df.copy()
+
+                # Truncate column headers and values to maximum width
+                for col in formatted_df.columns:
+                    col_name = str(col)
+                    if len(col_name) > max_col_width:
+                        new_name = col_name[:max_col_width - 3] + '...'
+                        formatted_df.rename(columns={col: new_name}, inplace=True)
+
+                # Truncate cell values
+                for col in formatted_df.columns:
+                    formatted_df[col] = formatted_df[col].astype(str).apply(
+                        lambda x: x[:max_col_width - 3] + '...' if len(x) > max_col_width else x)
+
                 # Create table with row index (always visible) and visible columns
-                table_output = tabulate(display_df, headers=display_df.columns,
-                                        tablefmt=table_format, showindex=True)
+                table_output = tabulate(formatted_df, headers=formatted_df.columns, tablefmt=table_format, showindex=True)
+
                 print(table_output)
             except Exception:
                 # Fallback to basic DataFrame display if tabulate fails
@@ -308,10 +329,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='View Parquet file content')
     parser.add_argument('file_path', nargs='?', default='.samples/weather.parquet', help='Path to the parquet file')
     parser.add_argument('-n', '--rows', type=int, default=5, help='Number of rows to display')
-    parser.add_argument('-i', '--interactive', action='store_true',
-                        help='Enable interactive mode with arrow key navigation')
-    parser.add_argument('-t', '--table-format',
-                        choices=['plain', 'simple', 'github', 'grid', 'fancy_grid', 'pipe', 'orgtbl', 'jira'],
+    parser.add_argument('-i', '--interactive', action='store_true', help='Enable interactive mode with arrow key navigation')
+    parser.add_argument('-t', '--table-format', choices=['plain', 'simple', 'github', 'grid', 'fancy_grid', 'pipe', 'orgtbl', 'jira'],
                         default='grid', help='Table format style')
     args = parser.parse_args()
 
