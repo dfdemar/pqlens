@@ -96,7 +96,7 @@ If not installed as a package, you can still run the script directly:
 
 ```bash
 # Direct script usage (manual setup only)
-python ./pqlens/parquet_viewer.py /path/to/file.parquet
+python ./pqlens/main.py /path/to/file.parquet
 ```
 
 In interactive mode, use these controls:

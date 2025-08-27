@@ -11,8 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
-# Import the functions we want to test
-from pqlens.parquet_viewer import view_parquet_file, display_table
+from pqlens.main import view_parquet_file, display_table
 
 
 class TestParquetViewer(unittest.TestCase):

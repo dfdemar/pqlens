@@ -6,7 +6,7 @@ Command-line interface for pqlens
 import sys
 
 from . import __version__
-from .parquet_viewer import main as viewer_main
+from .main import main as viewer_main
 
 
 def main():

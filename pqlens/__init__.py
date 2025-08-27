@@ -12,8 +12,8 @@ from .core.interactive import InteractiveViewer
 from .core.reader import ParquetReader
 from .formatters.simple import SimpleFormatter
 from .formatters.table import TabulateFormatter
-# Import from legacy wrapper for backward compatibility
-from .parquet_viewer import view_parquet_file, display_table, paged_display
+# Import from main module
+from .main import view_parquet_file, display_table, paged_display
 from .utils.terminal import TerminalHelper
 
 __all__ = [

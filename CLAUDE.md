@@ -38,7 +38,7 @@ pqlens now uses a modular architecture for better maintainability, testability, 
 - **pqlens/utils/errors.py**: Custom exception classes (`PqlensError`, `InvalidFileError`, etc.)
 
 ### Main Module
-- **pqlens/parquet_viewer.py**: Main module now uses modular architecture internally while maintaining backward-compatible API
+- **pqlens/main.py**: Main module with CLI entry point and public API functions using modular architecture internally
 - **pqlens/cli.py**: Command-line entry point with version handling  
 - **pqlens/__main__.py**: Support for `python -m pqlens` execution
 - **pqlens/__init__.py**: Package initialization with both legacy and modular API exports
@@ -73,7 +73,7 @@ pqlens -n 20 --table-format github /path/to/file.parquet
 python -m pqlens /path/to/file.parquet
 
 # Direct script (fallback)
-python ./pqlens/parquet_viewer.py /path/to/file.parquet
+python ./pqlens/main.py /path/to/file.parquet
 ```
 
 ## Development Environment

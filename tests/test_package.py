@@ -31,12 +31,12 @@ class TestPackage(unittest.TestCase):
 
     def test_submodule_imports(self):
         """Test that submodules can be imported."""
-        # Test parquet_viewer module
-        from pqlens import parquet_viewer
-        self.assertTrue(hasattr(parquet_viewer, 'view_parquet_file'))
-        self.assertTrue(hasattr(parquet_viewer, 'display_table'))
-        self.assertTrue(hasattr(parquet_viewer, 'paged_display'))
-        self.assertTrue(hasattr(parquet_viewer, 'main'))
+        # Test main module
+        from pqlens import main
+        self.assertTrue(hasattr(main, 'view_parquet_file'))
+        self.assertTrue(hasattr(main, 'display_table'))
+        self.assertTrue(hasattr(main, 'paged_display'))
+        self.assertTrue(hasattr(main, 'main'))
 
         # Test CLI module
         from pqlens import cli
@@ -55,9 +55,9 @@ class TestPackage(unittest.TestCase):
         from pqlens.cli import main
         self.assertTrue(callable(main))
 
-    def test_parquet_viewer_main_callable(self):
-        """Test that parquet_viewer main function is callable."""
-        from pqlens.parquet_viewer import main
+    def test_main_module_main_callable(self):
+        """Test that main module's main function is callable."""
+        from pqlens.main import main
         self.assertTrue(callable(main))
 
     def test_view_parquet_file_callable(self):
