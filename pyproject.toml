@@ -1,3 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "pqlens"
+version = "0.1.0"
+description = "A Python command-line tool for viewing and exploring Parquet files with interactive navigation"
+authors = [{ name = "pqlens", email = "pqlens@example.com" }]
+readme = "README.md"
 requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Data Scientists",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Utilities",
+]
+keywords = ["parquet", "data", "viewer", "cli", "interactive"]
+
+dependencies = [
+    "pandas>=1.5.0",
+    "pyarrow>=10.0.0",
+]
+
+[project.optional-dependencies]
+interactive = ["tabulate>=0.9.0", "readchar>=4.0.0"]
+dev = ["pytest>=7.0.0", "black>=22.0.0", "ruff>=0.1.0"]
+
+[project.urls]
+Homepage = "https://github.com/pqlens/pqlens"
+Repository = "https://github.com/pqlens/pqlens"
+Issues = "https://github.com/pqlens/pqlens/issues"
+
+[project.scripts]
+pqlens = "pqlens.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pqlens*"]
+
+[tool.setuptools.package-data]
+pqlens = ["*.md"]

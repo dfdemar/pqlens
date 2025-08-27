@@ -17,15 +17,31 @@ A Python command-line tool for viewing and exploring Parquet files with interact
 
 - Python 3.11 or higher
 
-### Setup
+### Install from Source
 
 1. Clone or download this repository
-2. Create a virtual environment:
+2. Install the package:
+   ```bash
+   # Install with basic functionality
+   pip install .
+   
+   # Install with interactive features (recommended)
+   pip install .[interactive]
+   
+   # Install in development mode (editable)
+   pip install -e .[interactive]
+   ```
+
+### Alternative: Manual Setup
+
+If you prefer not to install as a package:
+
+1. Create a virtual environment:
    ```bash
    python -m venv .venv
    ```
 
-3. Activate the virtual environment:
+2. Activate the virtual environment:
    ```bash
    # On Windows
    .venv\Scripts\activate
@@ -34,7 +50,7 @@ A Python command-line tool for viewing and exploring Parquet files with interact
    source .venv/bin/activate
    ```
 
-4. Install required dependencies:
+3. Install required dependencies:
    ```bash
    pip install pandas pyarrow tabulate readchar
    ```
@@ -43,25 +59,46 @@ A Python command-line tool for viewing and exploring Parquet files with interact
 
 ### Basic Usage
 
+After installation, you can use `pqlens` as a command:
+
 ```bash
 # View first 10 rows of a Parquet file
-python ./pqlens/parquet_viewer.py /path/to/file.parquet
+pqlens /path/to/file.parquet
+
+# Or using Python module syntax
+python -m pqlens /path/to/file.parquet
 
 # View first 20 rows
-python ./pqlens/parquet_viewer.py -n 20 /path/to/file.parquet
+pqlens -n 20 /path/to/file.parquet
 
 # Use a different table format
-python ./pqlens/parquet_viewer.py --table-format fancy_grid /path/to/file.parquet
+pqlens --table-format github /path/to/file.parquet
+
+# Check version
+pqlens --version
 ```
 
 ### Interactive Mode
 
 ```bash
 # Enable interactive navigation
-python ./pqlens/parquet_viewer.py --interactive /path/to/file.parquet
+pqlens --interactive /path/to/file.parquet
+
+# Interactive mode with more rows per page
+pqlens -i -n 25 /path/to/file.parquet
+```
+
+### Alternative: Direct Script Usage
+
+If not installed as a package, you can still run the script directly:
+
+```bash
+# Direct script usage (manual setup only)
+python ./pqlens/parquet_viewer.py /path/to/file.parquet
 ```
 
 In interactive mode, use these controls:
+
 - **↑/↓** or **k/j**: Navigate up/down one row at a time
 - **Page Up/Page Down**: Navigate full pages
 - **←/→** or **h/l**: Scroll horizontally through columns
@@ -102,31 +139,32 @@ Navigation: ↑↓ Move one row | Page Up/Down: Move full page | ←→ Scroll C
 
 ## Command Line Options
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `file_path` | | Path to the Parquet file to view | `.samples/weather.parquet` |
-| `--rows` | `-n` | Number of rows to display | `10` |
-| `--interactive` | `-i` | Enable interactive mode with navigation | `False` |
-| `--table-format` | `-t` | Table format style (see below) | `grid` |
+| Option           | Short | Description                             | Default                    |
+|------------------|-------|-----------------------------------------|----------------------------|
+| `file_path`      |       | Path to the Parquet file to view        | `.samples/weather.parquet` |
+| `--rows`         | `-n`  | Number of rows to display               | `10`                       |
+| `--interactive`  | `-i`  | Enable interactive mode with navigation | `False`                    |
+| `--table-format` | `-t`  | Table format style (see below)          | `grid`                     |
 
 ## Table Format Options
 
 The `--table-format` option supports the following styles:
 
-| Format | Description | Example |
-|--------|-------------|---------|
-| `plain` | Simple space-separated columns | Basic text layout |
-| `simple` | Clean table with minimal borders | Lines above and below headers |
-| `github` | GitHub-flavored Markdown table format | Pipe-separated with alignment |
-| `grid` | Full grid with borders around all cells | Complete box drawing |
-| `fancy_grid` | Enhanced grid with decorative borders | Unicode box-drawing characters |
-| `pipe` | Pipe-separated format | Similar to GitHub but simpler |
-| `orgtbl` | Org-mode table format | Emacs org-mode compatible |
-| `jira` | JIRA table format | Atlassian JIRA markup |
+| Format       | Description                             | Example                        |
+|--------------|-----------------------------------------|--------------------------------|
+| `plain`      | Simple space-separated columns          | Basic text layout              |
+| `simple`     | Clean table with minimal borders        | Lines above and below headers  |
+| `github`     | GitHub-flavored Markdown table format   | Pipe-separated with alignment  |
+| `grid`       | Full grid with borders around all cells | Complete box drawing           |
+| `fancy_grid` | Enhanced grid with decorative borders   | Unicode box-drawing characters |
+| `pipe`       | Pipe-separated format                   | Similar to GitHub but simpler  |
+| `orgtbl`     | Org-mode table format                   | Emacs org-mode compatible      |
+| `jira`       | JIRA table format                       | Atlassian JIRA markup          |
 
 ### Format Examples
 
 **grid** (default):
+
 ```
 +-------+--------+----------+
 | Col 1 | Col 2  | Col 3    |
@@ -136,6 +174,7 @@ The `--table-format` option supports the following styles:
 ```
 
 **fancy_grid**:
+
 ```
 ╒═══════╤════════╤══════════╕
 │ Col 1 │ Col 2  │ Col 3    │
@@ -145,6 +184,7 @@ The `--table-format` option supports the following styles:
 ```
 
 **github**:
+
 ```
 | Col 1 | Col 2 | Col 3 |
 |-------|-------|-------|
@@ -154,18 +194,21 @@ The `--table-format` option supports the following styles:
 ## Interactive Mode Features
 
 ### Navigation
+
 - **Single-row scrolling**: Move up/down one row at a time for precise navigation
 - **Page-based navigation**: Jump through large datasets quickly
 - **Horizontal scrolling**: View datasets with many columns
 - **Row numbers always visible**: Index column stays fixed during horizontal scrolling
 
 ### Terminal Adaptation
+
 - **Dynamic column width**: Automatically calculates optimal column widths
 - **Terminal size awareness**: Adapts display to current terminal dimensions
 - **Long value truncation**: Handles cells with long content gracefully
 - **Column overflow handling**: Shows subset of columns that fit in terminal width
 
 ### Fallback Support
+
 - **Alternative key bindings**: Works with `hjkl` and other keys if arrow keys aren't available
 - **Text-based navigation**: Falls back to text prompts if `readchar` module is missing
 - **Basic table display**: Functions without `tabulate` module (with reduced formatting)
@@ -173,41 +216,82 @@ The `--table-format` option supports the following styles:
 ## Examples
 
 ### Viewing a Dataset
+
 ```bash
 # Basic view - see file structure and first 10 rows
-python ./pqlens/parquet_viewer.py data.parquet
+pqlens data.parquet
 ```
 
 ### Exploring Large Files
+
 ```bash
 # Interactive mode for large datasets
-python ./pqlens/parquet_viewer.py --interactive large_dataset.parquet
+pqlens --interactive large_dataset.parquet
 
 # Show more rows at once
-python ./pqlens/parquet_viewer.py -i -n 25 large_dataset.parquet
+pqlens -i -n 25 large_dataset.parquet
 ```
 
 ### Different Formats
+
 ```bash
 # Clean GitHub-style table
-python ./pqlens/parquet_viewer.py -t github data.parquet
+pqlens -t github data.parquet
 
-# Fancy Unicode borders
-python ./pqlens/parquet_viewer.py -t fancy_grid data.parquet
+# Fancy Unicode borders (may have encoding issues on some Windows terminals)
+pqlens -t fancy_grid data.parquet
 
 # Simple format for copy-pasting
-python ./pqlens/parquet_viewer.py -t simple data.parquet
+pqlens -t simple data.parquet
 ```
 
 ## Dependencies
 
 ### Required
+
 - **pandas**: DataFrame operations and Parquet reading
 - **pyarrow**: Parquet file format support
 
 ### Optional
+
 - **tabulate**: Enhanced table formatting (fallback to basic display if missing)
 - **readchar**: Arrow key input for interactive mode (fallback to text input if missing)
+
+## Development
+
+### Running Tests
+
+The project includes a comprehensive test suite:
+
+```bash
+# Install development dependencies
+pip install .[dev]
+
+# Run all tests
+pytest tests/ -v
+
+# Run specific test files
+pytest tests/test_parquet_viewer.py -v
+pytest tests/test_cli.py -v
+pytest tests/test_package.py -v
+```
+
+**Test Coverage:**
+
+- Unit tests for core functions (`view_parquet_file`, `display_table`, `paged_display`)
+- Integration tests for CLI functionality
+- Package structure and import tests
+- Real behavior testing with actual Parquet files (no mocks)
+
+### Test Data
+
+Test files are automatically generated and include:
+
+- Simple datasets with basic data types
+- Empty datasets
+- Large datasets (100+ rows) for pagination testing
+- Wide datasets (20+ columns) for horizontal scrolling
+- Mixed data types with nullable dtypes (`Int64`, `boolean`, `string`)
 
 ## Requirements
 
@@ -217,17 +301,22 @@ python ./pqlens/parquet_viewer.py -t simple data.parquet
 ## Troubleshooting
 
 ### Missing Dependencies
+
 If you see dependency errors, install missing packages:
+
 ```bash
 pip install pandas pyarrow tabulate readchar
 ```
 
 ### Arrow Keys Not Working
+
 If arrow key navigation doesn't work in interactive mode:
+
 - Ensure `readchar` is installed: `pip install readchar`
 - Use alternative keys: `hjkl` for navigation, `np` for up/down, `fb` for page navigation
 
 ### Display Issues
+
 - Increase terminal width for better column display
 - Use `--table-format simple` for terminals with limited Unicode support
 - Try different table formats if borders appear corrupted
