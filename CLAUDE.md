@@ -4,22 +4,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`pqlens` is a Python command-line tool for viewing and exploring Parquet files with interactive navigation capabilities. The project consists of a single main
-module that provides both static and interactive viewing modes for Parquet data.
+`pqlens` is a Python command-line tool for viewing and exploring Parquet files with interactive navigation capabilities. The project now uses a modular
+architecture that separates concerns and provides both a backward-compatible legacy API and a new extensible modular API.
 
 ## Architecture
 
-- **pqlens/parquet_viewer.py**: Main module containing all functionality
-    - `view_parquet_file()`: Core function to read Parquet files using pandas/pyarrow
-    - `display_table()`: Static table display for simple viewing
-    - `paged_display()`: Interactive viewer with arrow key navigation and horizontal/vertical scrolling
-    - `main()`: Command-line interface function
-    - Terminal-aware column width calculation and display optimization
-    - Graceful fallback when optional dependencies are missing
+pqlens now uses a modular architecture for better maintainability, testability, and extensibility:
 
+### Core Modules
+- **pqlens/core/reader.py**: `ParquetReader` class for file I/O and validation
+    - `read_file()`: Read Parquet files with comprehensive error handling
+    - `validate_path()`: Path validation and normalization
+    - Graceful error handling with specific error messages
+    
+- **pqlens/core/display.py**: `DataFrameDisplay` class for static table display
+    - `show_table()`: Display DataFrames with customizable formatting
+    - `show_summary()`: Display file metadata and column information
+    - Pluggable formatter system (tabulate/simple)
+    
+- **pqlens/core/interactive.py**: `InteractiveViewer` class for navigation
+    - `start_interactive_mode()`: Arrow key navigation and horizontal/vertical scrolling
+    - Terminal-aware column width calculation and display optimization
+    - Support for both readchar and text-based navigation fallbacks
+
+### Formatters
+- **pqlens/formatters/base.py**: `BaseFormatter` abstract interface for extensibility
+- **pqlens/formatters/table.py**: `TabulateFormatter` with tabulate library support
+- **pqlens/formatters/simple.py**: `SimpleFormatter` fallback implementation
+
+### Utilities
+- **pqlens/utils/terminal.py**: `TerminalHelper` for terminal operations (size, clearing, etc.)
+- **pqlens/utils/validation.py**: Input validation functions (`validate_rows_parameter`, `validate_path_parameter`)
+- **pqlens/utils/errors.py**: Custom exception classes (`PqlensError`, `InvalidFileError`, etc.)
+
+### Legacy Compatibility
+- **pqlens/parquet_viewer.py**: Backward-compatible wrapper that imports from new modular structure
+- **pqlens/parquet_viewer_new.py**: New modular implementation (internal)
+- **pqlens/parquet_viewer_original.py**: Backup of original monolithic implementation
 - **pqlens/cli.py**: Command-line entry point with version handling
 - **pqlens/__main__.py**: Support for `python -m pqlens` execution
-- **pqlens/__init__.py**: Package initialization with version info and public API
+- **pqlens/__init__.py**: Package initialization with both legacy and modular API exports
 
 ## Dependencies
 
@@ -62,7 +86,7 @@ python ./pqlens/parquet_viewer.py /path/to/file.parquet
 
 ## Testing
 
-**Comprehensive test suite with 100% pass rate (33 tests):**
+**Comprehensive test suite with 100% pass rate (51 tests):**
 
 ```bash
 # Run all tests
@@ -91,6 +115,11 @@ pytest tests/test_package.py -v           # Package structure tests
 
 ## Key Implementation Details
 
+- **Modular Architecture**: Clean separation of concerns with pluggable components
+- **Backward Compatibility**: Legacy API preserved through compatibility wrapper
+- **Single Responsibility Principle**: Each module/class has one clear purpose
+- **Dependency Injection**: Components accept formatters/helpers as parameters
+- **Plugin System**: Easy to extend with new formatters without touching core logic
 - Interactive mode uses ANSI escape codes for screen clearing and terminal dimension detection
 - Column width calculation dynamically adapts to terminal size
 - Horizontal scrolling preserves row number column visibility

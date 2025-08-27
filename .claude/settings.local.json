@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(py -3.11 -m pytest tests/ -v)",
-      "Bash(py -3.11 -m pytest tests/test_error_handling.py -v)"
+      "Bash(py -3.11 -m pytest tests/test_error_handling.py -v)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(pip install:*)",
+      "Bash(python -m pytest tests/test_error_handling.py::TestErrorHandling::test_paged_display_invalid_page_size -v)"
     ],
     "deny": [],
     "ask": []

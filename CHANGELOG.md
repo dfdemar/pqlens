@@ -5,7 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2025-01-26
+## [0.2.0] - 2025-08-27
+
+### Major Architectural Refactoring
+
+This release introduces a complete modular architecture while maintaining 100% backward compatibility.
+
+### Added
+
+- **Modular Architecture**: Clean separation of concerns with pluggable components
+  - `pqlens.core.reader`: `ParquetReader` class for file I/O and validation
+  - `pqlens.core.display`: `DataFrameDisplay` class for static table display  
+  - `pqlens.core.interactive`: `InteractiveViewer` class for interactive navigation
+  - `pqlens.formatters.base`: `BaseFormatter` abstract interface for extensibility
+  - `pqlens.formatters.table`: `TabulateFormatter` with tabulate library support
+  - `pqlens.formatters.simple`: `SimpleFormatter` fallback implementation
+  - `pqlens.utils.terminal`: `TerminalHelper` for terminal operations
+  - `pqlens.utils.validation`: Input validation functions
+  - `pqlens.utils.errors`: Custom exception classes
+
+- **Programmatic API**: New modular components can be imported and used directly
+  ```python
+  from pqlens import ParquetReader, DataFrameDisplay, InteractiveViewer
+  from pqlens import TabulateFormatter, SimpleFormatter, TerminalHelper
+  ```
+
+- **Plugin Architecture**: Easy to extend with custom formatters without touching core logic
+- **Dependency Injection**: Components accept formatters/helpers as parameters for flexibility
+
+### Changed
+
+- **Complete codebase refactoring** from monolithic (~600 lines) to modular architecture
+- **Enhanced test suite**: Expanded from 33 to 51 tests (100% pass rate maintained)
+- **Improved maintainability**: Single responsibility principle applied throughout
+- **Better extensibility**: Plugin system for formatters, easy to add new readers/formatters
+
+### Technical Improvements
+
+- **Legacy Compatibility**: Original API preserved through compatibility wrapper - no breaking changes
+- **Error Handling**: Centralized custom exceptions with specific error types
+- **Code Organization**: Clear module boundaries with well-defined interfaces
+- **Documentation**: Updated README.md and CLAUDE.md with architecture details and API examples
+
+### Backward Compatibility
+
+- All existing functionality preserved through `pqlens.parquet_viewer` compatibility wrapper
+- CLI interface unchanged - all existing commands and options work exactly as before
+- Legacy API functions (`view_parquet_file`, `display_table`, `paged_display`) maintain identical behavior
+- No changes required for existing users or scripts
+
+### Benefits
+
+- **Maintainability**: Each module has single responsibility and clear purpose
+- **Testability**: Components can be tested in isolation with proper dependency injection
+- **Extensibility**: Plugin architecture allows easy addition of new formatters/readers
+- **Performance**: Modular loading reduces memory footprint for simple operations
+
+## [0.1.0] - 2025-08-26
 
 ### Added
 
