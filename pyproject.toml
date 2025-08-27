@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "pqlens"
 version = "0.1.0"
 description = "A Python command-line tool for viewing and exploring Parquet files with interactive navigation"
-authors = [{name = "pqlens", email = "pqlens@example.com"}]
+authors = [{ name = "pqlens", email = "pqlens@example.com" }]
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [

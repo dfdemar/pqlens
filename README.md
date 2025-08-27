@@ -98,6 +98,7 @@ python ./pqlens/parquet_viewer.py /path/to/file.parquet
 ```
 
 In interactive mode, use these controls:
+
 - **↑/↓** or **k/j**: Navigate up/down one row at a time
 - **Page Up/Page Down**: Navigate full pages
 - **←/→** or **h/l**: Scroll horizontally through columns
@@ -138,31 +139,32 @@ Navigation: ↑↓ Move one row | Page Up/Down: Move full page | ←→ Scroll C
 
 ## Command Line Options
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `file_path` | | Path to the Parquet file to view | `.samples/weather.parquet` |
-| `--rows` | `-n` | Number of rows to display | `10` |
-| `--interactive` | `-i` | Enable interactive mode with navigation | `False` |
-| `--table-format` | `-t` | Table format style (see below) | `grid` |
+| Option           | Short | Description                             | Default                    |
+|------------------|-------|-----------------------------------------|----------------------------|
+| `file_path`      |       | Path to the Parquet file to view        | `.samples/weather.parquet` |
+| `--rows`         | `-n`  | Number of rows to display               | `10`                       |
+| `--interactive`  | `-i`  | Enable interactive mode with navigation | `False`                    |
+| `--table-format` | `-t`  | Table format style (see below)          | `grid`                     |
 
 ## Table Format Options
 
 The `--table-format` option supports the following styles:
 
-| Format | Description | Example |
-|--------|-------------|---------|
-| `plain` | Simple space-separated columns | Basic text layout |
-| `simple` | Clean table with minimal borders | Lines above and below headers |
-| `github` | GitHub-flavored Markdown table format | Pipe-separated with alignment |
-| `grid` | Full grid with borders around all cells | Complete box drawing |
-| `fancy_grid` | Enhanced grid with decorative borders | Unicode box-drawing characters |
-| `pipe` | Pipe-separated format | Similar to GitHub but simpler |
-| `orgtbl` | Org-mode table format | Emacs org-mode compatible |
-| `jira` | JIRA table format | Atlassian JIRA markup |
+| Format       | Description                             | Example                        |
+|--------------|-----------------------------------------|--------------------------------|
+| `plain`      | Simple space-separated columns          | Basic text layout              |
+| `simple`     | Clean table with minimal borders        | Lines above and below headers  |
+| `github`     | GitHub-flavored Markdown table format   | Pipe-separated with alignment  |
+| `grid`       | Full grid with borders around all cells | Complete box drawing           |
+| `fancy_grid` | Enhanced grid with decorative borders   | Unicode box-drawing characters |
+| `pipe`       | Pipe-separated format                   | Similar to GitHub but simpler  |
+| `orgtbl`     | Org-mode table format                   | Emacs org-mode compatible      |
+| `jira`       | JIRA table format                       | Atlassian JIRA markup          |
 
 ### Format Examples
 
 **grid** (default):
+
 ```
 +-------+--------+----------+
 | Col 1 | Col 2  | Col 3    |
@@ -172,6 +174,7 @@ The `--table-format` option supports the following styles:
 ```
 
 **fancy_grid**:
+
 ```
 ╒═══════╤════════╤══════════╕
 │ Col 1 │ Col 2  │ Col 3    │
@@ -181,6 +184,7 @@ The `--table-format` option supports the following styles:
 ```
 
 **github**:
+
 ```
 | Col 1 | Col 2 | Col 3 |
 |-------|-------|-------|
@@ -190,18 +194,21 @@ The `--table-format` option supports the following styles:
 ## Interactive Mode Features
 
 ### Navigation
+
 - **Single-row scrolling**: Move up/down one row at a time for precise navigation
 - **Page-based navigation**: Jump through large datasets quickly
 - **Horizontal scrolling**: View datasets with many columns
 - **Row numbers always visible**: Index column stays fixed during horizontal scrolling
 
 ### Terminal Adaptation
+
 - **Dynamic column width**: Automatically calculates optimal column widths
 - **Terminal size awareness**: Adapts display to current terminal dimensions
 - **Long value truncation**: Handles cells with long content gracefully
 - **Column overflow handling**: Shows subset of columns that fit in terminal width
 
 ### Fallback Support
+
 - **Alternative key bindings**: Works with `hjkl` and other keys if arrow keys aren't available
 - **Text-based navigation**: Falls back to text prompts if `readchar` module is missing
 - **Basic table display**: Functions without `tabulate` module (with reduced formatting)
@@ -209,12 +216,14 @@ The `--table-format` option supports the following styles:
 ## Examples
 
 ### Viewing a Dataset
+
 ```bash
 # Basic view - see file structure and first 10 rows
 pqlens data.parquet
 ```
 
 ### Exploring Large Files
+
 ```bash
 # Interactive mode for large datasets
 pqlens --interactive large_dataset.parquet
@@ -224,6 +233,7 @@ pqlens -i -n 25 large_dataset.parquet
 ```
 
 ### Different Formats
+
 ```bash
 # Clean GitHub-style table
 pqlens -t github data.parquet
@@ -238,10 +248,12 @@ pqlens -t simple data.parquet
 ## Dependencies
 
 ### Required
+
 - **pandas**: DataFrame operations and Parquet reading
 - **pyarrow**: Parquet file format support
 
 ### Optional
+
 - **tabulate**: Enhanced table formatting (fallback to basic display if missing)
 - **readchar**: Arrow key input for interactive mode (fallback to text input if missing)
 
@@ -265,6 +277,7 @@ pytest tests/test_package.py -v
 ```
 
 **Test Coverage:**
+
 - Unit tests for core functions (`view_parquet_file`, `display_table`, `paged_display`)
 - Integration tests for CLI functionality
 - Package structure and import tests
@@ -273,6 +286,7 @@ pytest tests/test_package.py -v
 ### Test Data
 
 Test files are automatically generated and include:
+
 - Simple datasets with basic data types
 - Empty datasets
 - Large datasets (100+ rows) for pagination testing
@@ -287,17 +301,22 @@ Test files are automatically generated and include:
 ## Troubleshooting
 
 ### Missing Dependencies
+
 If you see dependency errors, install missing packages:
+
 ```bash
 pip install pandas pyarrow tabulate readchar
 ```
 
 ### Arrow Keys Not Working
+
 If arrow key navigation doesn't work in interactive mode:
+
 - Ensure `readchar` is installed: `pip install readchar`
 - Use alternative keys: `hjkl` for navigation, `np` for up/down, `fb` for page navigation
 
 ### Display Issues
+
 - Increase terminal width for better column display
 - Use `--table-format simple` for terminals with limited Unicode support
 - Try different table formats if borders appear corrupted

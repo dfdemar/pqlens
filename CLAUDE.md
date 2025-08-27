@@ -4,17 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`pqlens` is a Python command-line tool for viewing and exploring Parquet files with interactive navigation capabilities. The project consists of a single main module that provides both static and interactive viewing modes for Parquet data.
+`pqlens` is a Python command-line tool for viewing and exploring Parquet files with interactive navigation capabilities. The project consists of a single main
+module that provides both static and interactive viewing modes for Parquet data.
 
 ## Architecture
 
 - **pqlens/parquet_viewer.py**: Main module containing all functionality
-  - `view_parquet_file()`: Core function to read Parquet files using pandas/pyarrow
-  - `display_table()`: Static table display for simple viewing
-  - `paged_display()`: Interactive viewer with arrow key navigation and horizontal/vertical scrolling
-  - `main()`: Command-line interface function
-  - Terminal-aware column width calculation and display optimization
-  - Graceful fallback when optional dependencies are missing
+    - `view_parquet_file()`: Core function to read Parquet files using pandas/pyarrow
+    - `display_table()`: Static table display for simple viewing
+    - `paged_display()`: Interactive viewer with arrow key navigation and horizontal/vertical scrolling
+    - `main()`: Command-line interface function
+    - Terminal-aware column width calculation and display optimization
+    - Graceful fallback when optional dependencies are missing
 
 - **pqlens/cli.py**: Command-line entry point with version handling
 - **pqlens/__main__.py**: Support for `python -m pqlens` execution
@@ -23,19 +24,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Dependencies
 
 **Required packages:**
+
 - `pandas`: DataFrame operations and Parquet file reading
 - `pyarrow`: Parquet file format support
 
 **Optional packages (with fallbacks):**
+
 - `tabulate`: Table formatting (fallback to basic display)
 - `readchar`: Arrow key input for interactive mode (fallback to text input)
 
 **Development packages:**
+
 - `pytest`: Testing framework for comprehensive test suite
 
 ## Usage Patterns
 
 The tool supports multiple invocation modes:
+
 ```bash
 # Package command (preferred)
 pqlens /path/to/file.parquet
@@ -58,6 +63,7 @@ python ./pqlens/parquet_viewer.py /path/to/file.parquet
 ## Testing
 
 **Comprehensive test suite with 100% pass rate (33 tests):**
+
 ```bash
 # Run all tests
 pytest tests/ -v
@@ -69,13 +75,16 @@ pytest tests/test_package.py -v           # Package structure tests
 ```
 
 **Test categories:**
+
 - **Unit tests**: Core functions with various data types and edge cases
 - **Integration tests**: Full CLI functionality via subprocess (real behavior)
 - **Package tests**: Import structure, version management, API exports
 
-**Test data:** Automatically generated Parquet files covering simple, empty, large, wide, and mixed-type datasets using pandas nullable dtypes (`Int64`, `boolean`, `string`)
+**Test data:** Automatically generated Parquet files covering simple, empty, large, wide, and mixed-type datasets using pandas nullable dtypes (`Int64`,
+`boolean`, `string`)
 
 **Testing principles:**
+
 - No mocks - all tests use real behavior and actual Parquet files
 - Comprehensive edge case coverage including error conditions
 - Maintains 100% pass rate across all scenarios
@@ -89,6 +98,7 @@ pytest tests/test_package.py -v           # Package structure tests
 - Comprehensive error handling for missing dependencies and file access issues
 
 # important-instruction-reminders
+
 Do what has been asked; nothing more, nothing less.
 **ALWAYS** ask for clarification if your instructions or any tasks are unclear
 **NEVER** create files unless they're absolutely necessary for achieving your goal.

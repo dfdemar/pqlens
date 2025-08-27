@@ -4,32 +4,31 @@ Tests for package structure and imports
 """
 
 import unittest
-import importlib
 
 
 class TestPackage(unittest.TestCase):
     """Test cases for package structure."""
-    
+
     def test_package_import(self):
         """Test that pqlens package can be imported."""
         import pqlens
         self.assertTrue(hasattr(pqlens, '__version__'))
-    
+
     def test_version_attribute(self):
         """Test that version attribute is correct."""
         import pqlens
         self.assertEqual(pqlens.__version__, "0.1.0")
         self.assertIsInstance(pqlens.__version__, str)
-    
+
     def test_public_api_exports(self):
         """Test that public API functions are exported."""
         import pqlens
-        
+
         # Check that main functions are available
         self.assertTrue(hasattr(pqlens, 'view_parquet_file'))
         self.assertTrue(hasattr(pqlens, 'display_table'))
         self.assertTrue(hasattr(pqlens, 'paged_display'))
-    
+
     def test_submodule_imports(self):
         """Test that submodules can be imported."""
         # Test parquet_viewer module
@@ -38,11 +37,11 @@ class TestPackage(unittest.TestCase):
         self.assertTrue(hasattr(parquet_viewer, 'display_table'))
         self.assertTrue(hasattr(parquet_viewer, 'paged_display'))
         self.assertTrue(hasattr(parquet_viewer, 'main'))
-        
+
         # Test CLI module
         from pqlens import cli
         self.assertTrue(hasattr(cli, 'main'))
-    
+
     def test_main_module_importable(self):
         """Test that __main__ module can be imported."""
         try:
@@ -50,27 +49,27 @@ class TestPackage(unittest.TestCase):
             # Should not raise an exception
         except ImportError:
             self.fail("__main__ module should be importable")
-    
+
     def test_cli_main_callable(self):
         """Test that CLI main function is callable."""
         from pqlens.cli import main
         self.assertTrue(callable(main))
-    
+
     def test_parquet_viewer_main_callable(self):
         """Test that parquet_viewer main function is callable."""
         from pqlens.parquet_viewer import main
         self.assertTrue(callable(main))
-    
+
     def test_view_parquet_file_callable(self):
         """Test that view_parquet_file function is callable."""
         from pqlens import view_parquet_file
         self.assertTrue(callable(view_parquet_file))
-    
+
     def test_display_table_callable(self):
         """Test that display_table function is callable."""
         from pqlens import display_table
         self.assertTrue(callable(display_table))
-    
+
     def test_paged_display_callable(self):
         """Test that paged_display function is callable."""
         from pqlens import paged_display
