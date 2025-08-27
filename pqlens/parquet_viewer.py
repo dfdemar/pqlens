@@ -31,6 +31,7 @@ Usage:
    $ python ./pqlens/parquet_viewer.py --table-format fancy_grid /path/to/file.parquet
 """
 
+import os
 import shutil  # For getting terminal size
 import sys
 
@@ -89,21 +90,131 @@ except ImportError:
 def view_parquet_file(file_path):
     """
     Reads a Parquet file and returns its content as a DataFrame.
+    
+    Performs comprehensive validation and provides specific error messages
+    for different failure scenarios.
 
     :param file_path: Path to the Parquet file.
-    :return: DataFrame containing the data from the Parquet file.
+    :return: DataFrame containing the data from the Parquet file, or None if error.
     """
+    # Input validation
+    if not file_path:
+        print("Error: No file path provided")
+        return None
+    
+    if not isinstance(file_path, (str, os.PathLike)):
+        print(f"Error: Invalid file path type. Expected string or path-like object, got {type(file_path).__name__}")
+        return None
+    
+    # Convert to string for consistent handling
+    file_path = str(file_path)
+    
+    # File existence validation
+    if not os.path.exists(file_path):
+        print(f"Error: File not found - '{file_path}'")
+        print("Please check the file path and try again.")
+        return None
+    
+    # Let pandas handle directories - it may treat them as datasets
+    # Only validate that the path exists, don't restrict file types
+    
+    # Check file permissions
+    if not os.access(file_path, os.R_OK):
+        print(f"Error: Permission denied - cannot read file '{file_path}'")
+        print("Please check file permissions and try again.")
+        return None
+    
+    # Get file size for memory error reporting
+    file_size = os.path.getsize(file_path)
+    
+    # Check file extension (warning, not error)
+    if not file_path.lower().endswith(('.parquet', '.pqt')):
+        print(f"Warning: File '{file_path}' does not have a .parquet extension")
+        print("Attempting to read as Parquet format anyway...")
+    
+    # Attempt to read the Parquet file with specific error handling
     try:
         df = pd.read_parquet(file_path)
+        
+        # Post-read validation
+        if df is None:
+            print(f"Error: Failed to read Parquet file '{file_path}' - result is None")
+            return None
+            
+        # Check for zero columns (valid but unusual case)
+        if len(df.columns) == 0:
+            print(f"Warning: Parquet file '{file_path}' has no columns")
+            print("This is a valid but unusual Parquet file structure.")
+        
         return df
+        
+    except ImportError as e:
+        print(f"Error: Missing required library - {e}")
+        print("Please install required packages: pip install pandas pyarrow")
+        return None
+        
+    except pd.errors.ParserError as e:
+        print(f"Error: Invalid Parquet file format - '{file_path}'")
+        print(f"Parser error: {e}")
+        print("The file may be corrupted or not a valid Parquet file.")
+        return None
+        
+    except PermissionError as e:
+        print(f"Error: Permission denied accessing file '{file_path}'")
+        print(f"System error: {e}")
+        return None
+        
+    except FileNotFoundError as e:
+        # This shouldn't happen due to our pre-checks, but handle it anyway
+        print(f"Error: File not found during read operation - '{file_path}'")
+        print(f"System error: {e}")
+        return None
+        
+    except MemoryError as e:
+        print(f"Error: Insufficient memory to load file '{file_path}'")
+        print(f"The file may be too large for available memory.")
+        print(f"File size: {file_size / (1024*1024):.1f} MB")
+        print("Try using a machine with more RAM or processing the file in chunks.")
+        return None
+        
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if 'not a parquet file' in error_msg or 'parquet magic bytes' in error_msg:
+            print(f"Error: '{file_path}' is not a valid Parquet file")
+            print(f"The file may be corrupted, empty, or in a different format.")
+        elif 'schema' in error_msg:
+            print(f"Error: Invalid Parquet schema in file '{file_path}'")
+            print(f"Schema error: {e}")
+        else:
+            print(f"Error: Invalid data in Parquet file '{file_path}'")
+            print(f"Value error: {e}")
+        return None
+        
+    except OSError as e:
+        error_msg = str(e).lower()
+        if 'no such file' in error_msg:
+            print(f"Error: File disappeared during read operation - '{file_path}'")
+        elif 'permission denied' in error_msg:
+            print(f"Error: Permission denied accessing '{file_path}'")
+        else:
+            print(f"Error: System error accessing file '{file_path}'")
+            print(f"OS error: {e}")
+        return None
+        
     except Exception as e:
-        print(f"Error reading Parquet file: {e}")
+        # Catch-all for unexpected errors
+        print(f"Error: Unexpected error reading Parquet file '{file_path}'")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {e}")
+        print("This may indicate a bug in the software or an unusual file format.")
         return None
 
 
 def display_table(df, rows=10):
     """
     Display a DataFrame as a nicely formatted table.
+    
+    Handles edge cases like zero columns, zero rows, and invalid parameters.
 
     :param df: DataFrame to display
     :param rows: Number of rows to display
@@ -111,26 +222,78 @@ def display_table(df, rows=10):
     if df is None:
         print("No data to display")
         return
+    
+    # Validate rows parameter
+    if not isinstance(rows, int) or rows < 0:
+        print(f"Warning: Invalid rows parameter '{rows}', using default of 10")
+        rows = 10
 
     print(f"\nParquet file shape: {df.shape}")
+    
+    # Handle zero columns case
+    if len(df.columns) == 0:
+        print("\nThis Parquet file has no columns.")
+        print("It contains only row metadata without any data columns.")
+        if len(df) > 0:
+            print(f"Number of rows: {len(df)}")
+        return
+    
     print(f"\nColumn types:\n{df.dtypes}")
-    print(f"\nFirst {rows} rows:")
+    
+    # Handle zero rows case
+    if len(df) == 0:
+        print(f"\nFile structure (no data rows):")
+    else:
+        # Determine actual number of rows to show
+        actual_rows = min(rows, len(df))
+        print(f"\nFirst {actual_rows} rows:")
 
-    # Format as a nice table with borders
-    table = tabulate(df.head(rows), headers=df.columns, tablefmt='grid')
-    print(table)
+    try:
+        # Format as a nice table with borders
+        table = tabulate(df.head(rows), headers=df.columns, tablefmt='grid')
+        print(table)
+    except Exception as e:
+        # Fallback for tabulate errors
+        print(f"Warning: Could not format table properly: {e}")
+        print("Falling back to basic display:")
+        print(df.head(rows))
 
 
 def paged_display(df, page_size=10, table_format='grid'):
     """
     Display DataFrame in pages with arrow key navigation.
+    
+    Handles edge cases like zero columns, invalid parameters, and provides
+    helpful feedback for unusual data structures.
 
     :param df: DataFrame to display
     :param page_size: Number of rows to show per page
     :param table_format: Table format style ('grid', 'fancy_grid', etc.)
     """
-    if df is None or df.empty:
-        print("No data to display")
+    if df is None:
+        print("No data to display - DataFrame is None")
+        return
+    
+    # Validate parameters
+    if not isinstance(page_size, int) or page_size <= 0:
+        print(f"Warning: Invalid page_size '{page_size}', using default of 10")
+        page_size = 10
+    
+    # Handle zero columns case
+    if len(df.columns) == 0:
+        print("\nThis Parquet file has no columns.")
+        print("It contains only row metadata without any data columns.")
+        if len(df) > 0:
+            print(f"Number of rows: {len(df)}")
+        print("\nNothing to display in interactive mode.")
+        return
+    
+    # Handle empty DataFrame (has columns but no rows)
+    if df.empty:
+        print("\nDataFrame has columns but no data rows.")
+        print(f"Columns ({len(df.columns)}): {list(df.columns)}")
+        print(f"Column types:\n{df.dtypes}")
+        print("\nNothing to navigate in interactive mode.")
         return
 
     # Get terminal dimensions
