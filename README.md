@@ -329,7 +329,7 @@ pqlens is built with a modular architecture that promotes maintainability, testa
 
 ### Formatters
 
-- **`pqlens.formatters.base`**: `BaseFormatter` abstract interface
+- **`pqlens.formatters.formatter`**: `Formatter` abstract interface
 - **`pqlens.formatters.table`**: `TabulateFormatter` with tabulate library support
 - **`pqlens.formatters.simple`**: `SimpleFormatter` fallback implementation
 

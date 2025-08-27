@@ -28,7 +28,7 @@ pqlens now uses a modular architecture for better maintainability, testability, 
     - Support for both readchar and text-based navigation fallbacks
 
 ### Formatters
-- **pqlens/formatters/base.py**: `BaseFormatter` abstract interface for extensibility
+- **pqlens/formatters/formatter.py**: `Formatter` abstract interface for extensibility
 - **pqlens/formatters/table.py**: `TabulateFormatter` with tabulate library support
 - **pqlens/formatters/simple.py**: `SimpleFormatter` fallback implementation
 
@@ -37,11 +37,9 @@ pqlens now uses a modular architecture for better maintainability, testability, 
 - **pqlens/utils/validation.py**: Input validation functions (`validate_rows_parameter`, `validate_path_parameter`)
 - **pqlens/utils/errors.py**: Custom exception classes (`PqlensError`, `InvalidFileError`, etc.)
 
-### Legacy Compatibility
-- **pqlens/parquet_viewer.py**: Backward-compatible wrapper that imports from new modular structure
-- **pqlens/parquet_viewer_new.py**: New modular implementation (internal)
-- **pqlens/parquet_viewer_original.py**: Backup of original monolithic implementation
-- **pqlens/cli.py**: Command-line entry point with version handling
+### Main Module
+- **pqlens/parquet_viewer.py**: Main module now uses modular architecture internally while maintaining backward-compatible API
+- **pqlens/cli.py**: Command-line entry point with version handling  
 - **pqlens/__main__.py**: Support for `python -m pqlens` execution
 - **pqlens/__init__.py**: Package initialization with both legacy and modular API exports
 

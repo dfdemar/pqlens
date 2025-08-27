@@ -17,7 +17,7 @@ This release introduces a complete modular architecture while maintaining 100% b
   - `pqlens.core.reader`: `ParquetReader` class for file I/O and validation
   - `pqlens.core.display`: `DataFrameDisplay` class for static table display  
   - `pqlens.core.interactive`: `InteractiveViewer` class for interactive navigation
-  - `pqlens.formatters.base`: `BaseFormatter` abstract interface for extensibility
+  - `pqlens.formatters.formatter`: `Formatter` abstract interface for extensibility
   - `pqlens.formatters.table`: `TabulateFormatter` with tabulate library support
   - `pqlens.formatters.simple`: `SimpleFormatter` fallback implementation
   - `pqlens.utils.terminal`: `TerminalHelper` for terminal operations
