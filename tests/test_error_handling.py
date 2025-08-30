@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from pqlens.parquet_viewer import view_parquet_file, display_table, paged_display
+from pqlens.main import view_parquet_file, display_table, paged_display
 
 
 class TestErrorHandling(unittest.TestCase):

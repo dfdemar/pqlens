@@ -10,6 +10,8 @@ A Python command-line tool for viewing and exploring Parquet files with interact
 - **Multiple table formats**: Choose from various table styling options
 - **Terminal-aware**: Automatically adapts to terminal size and capabilities
 - **Graceful fallbacks**: Works even when optional dependencies are missing
+- **Modular architecture**: Clean, extensible codebase with pluggable components
+- **Programmatic API**: Use components directly in your Python applications
 
 ## Installation
 
@@ -94,7 +96,7 @@ If not installed as a package, you can still run the script directly:
 
 ```bash
 # Direct script usage (manual setup only)
-python ./pqlens/parquet_viewer.py /path/to/file.parquet
+python ./pqlens/main.py /path/to/file.parquet
 ```
 
 In interactive mode, use these controls:
@@ -103,6 +105,64 @@ In interactive mode, use these controls:
 - **Page Up/Page Down**: Navigate full pages
 - **←/→** or **h/l**: Scroll horizontally through columns
 - **q**: Quit interactive mode
+
+## Programmatic API
+
+pqlens now provides a clean modular API for use in Python applications:
+
+### Simple API (Legacy Compatible)
+
+```python
+from pqlens import view_parquet_file, display_table, paged_display
+
+# Read a Parquet file
+df = view_parquet_file('/path/to/file.parquet')
+
+# Display the data
+display_table(df, rows=20)
+
+# Interactive viewer (launches in current terminal)
+paged_display(df, page_size=15, table_format='github')
+```
+
+### Modular API (Advanced Usage)
+
+```python
+from pqlens import ParquetReader, DataFrameDisplay, InteractiveViewer
+from pqlens import TabulateFormatter, SimpleFormatter
+
+# Use the reader directly
+reader = ParquetReader()
+df = reader.read_file('/path/to/file.parquet')
+
+# Customize the display with your preferred formatter
+formatter = TabulateFormatter()
+display = DataFrameDisplay(formatter)
+display.show_table(df, rows=25)
+
+# Create an interactive viewer with custom configuration
+viewer = InteractiveViewer(df, display)
+viewer.start_interactive_mode(page_size=20, table_format='fancy_grid')
+```
+
+### Extending with Custom Formatters
+
+```python
+from pqlens.formatters import Formatter
+from pqlens import DataFrameDisplay
+
+
+class MyCustomFormatter(Formatter):
+    def format_table(self, df, **kwargs):
+        # Your custom formatting logic here
+        return df.to_string()
+
+
+# Use your custom formatter
+custom_formatter = MyCustomFormatter()
+display = DataFrameDisplay(custom_formatter)
+display.show_table(df)
+```
 
 ## Viewer
 
@@ -256,6 +316,35 @@ pqlens -t simple data.parquet
 
 - **tabulate**: Enhanced table formatting (fallback to basic display if missing)
 - **readchar**: Arrow key input for interactive mode (fallback to text input if missing)
+
+## Architecture
+
+pqlens is built with a modular architecture that promotes maintainability, testability, and extensibility:
+
+### Core Modules
+
+- **`pqlens.core.reader`**: `ParquetReader` class for file I/O and validation
+- **`pqlens.core.display`**: `DataFrameDisplay` class for static table display
+- **`pqlens.core.interactive`**: `InteractiveViewer` class for navigation UI
+
+### Formatters
+
+- **`pqlens.formatters.formatter`**: `Formatter` abstract interface
+- **`pqlens.formatters.table`**: `TabulateFormatter` with tabulate library support
+- **`pqlens.formatters.simple`**: `SimpleFormatter` fallback implementation
+
+### Utilities
+
+- **`pqlens.utils.terminal`**: `TerminalHelper` for terminal operations
+- **`pqlens.utils.validation`**: Input validation functions
+- **`pqlens.utils.errors`**: Custom exception classes
+
+### Benefits
+
+- **Single Responsibility**: Each module has one clear purpose
+- **Dependency Injection**: Components accept dependencies as parameters
+- **Plugin Architecture**: Easy to add new formatters without touching core logic
+- **Backward Compatibility**: Legacy API preserved through compatibility wrapper
 
 ## Development
 
