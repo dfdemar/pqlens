@@ -395,7 +395,7 @@ class InteractiveViewer:
                 )
 
                 # Cache the chunk (limit cache size to avoid memory issues)
-                if len(self.cached_chunks) > 10:  # Keep only last 10 chunks
+                if len(self.cached_chunks) >= 10:  # Keep only last 10 chunks
                     # Remove oldest chunk
                     oldest_key = next(iter(self.cached_chunks))
                     del self.cached_chunks[oldest_key]

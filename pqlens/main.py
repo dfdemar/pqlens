@@ -72,18 +72,21 @@ except ImportError:
 [check_package(pkg) for pkg in optional_packages]
 
 
-def view_parquet_file(file_path):
+def view_parquet_file(file_path, columns=None, row_range=None, enable_lazy_loading=True):
     """
-    Reads a Parquet file and returns its content as a DataFrame.
+    Reads a Parquet file and returns its content as a DataFrame with memory optimization.
     
     Performs comprehensive validation and provides specific error messages
-    for different failure scenarios.
+    for different failure scenarios. Uses lazy loading for large files.
 
     :param file_path: Path to the Parquet file.
+    :param columns: Optional list of columns to read (for memory efficiency)
+    :param row_range: Optional tuple (start_row, end_row) for partial reading
+    :param enable_lazy_loading: Whether to enable lazy loading for large files
     :return: DataFrame containing the data from the Parquet file, or None if error.
     """
-    reader = ParquetReader()
-    return reader.read_file(file_path)
+    reader = ParquetReader(enable_lazy_loading=enable_lazy_loading)
+    return reader.read_file(file_path, columns=columns, row_range=row_range)
 
 
 def display_table(df, rows=10):
@@ -124,9 +127,35 @@ def main():
     parser.add_argument('-i', '--interactive', action='store_true', help='Enable interactive mode with arrow key navigation')
     parser.add_argument('-t', '--table-format', choices=['plain', 'simple', 'github', 'grid', 'fancy_grid', 'pipe', 'orgtbl', 'jira'],
                         default='grid', help='Table format style')
+    parser.add_argument('-c', '--columns', nargs='+', help='Specific columns to display (space-separated)')
+    parser.add_argument('--no-lazy-loading', action='store_true', help='Disable lazy loading for large files')
+    parser.add_argument('--memory-threshold', type=int, default=100, help='File size threshold in MB for lazy loading (default: 100)')
     args = parser.parse_args()
 
-    result_df = view_parquet_file(args.file_path)
+    enable_lazy = not args.no_lazy_loading
+    
+    # Initialize reader with memory optimization settings
+    reader = ParquetReader(
+        memory_threshold_mb=args.memory_threshold,
+        enable_lazy_loading=enable_lazy
+    )
+    
+    if args.interactive and enable_lazy:
+        # For interactive mode with lazy loading, don't load the full dataset upfront
+        reader.read_file(args.file_path)  # Load metadata only
+        if args.interactive:
+            paged_display(
+                df=None, 
+                page_size=args.rows, 
+                table_format=args.table_format,
+                file_path=args.file_path,
+                columns=args.columns,
+                enable_lazy_loading=enable_lazy
+            )
+            return
+    
+    # Load the data (potentially with lazy loading)
+    result_df = reader.read_file(args.file_path, columns=args.columns)
 
     if result_df is not None:
         # Set pandas display options
@@ -136,11 +165,17 @@ def main():
 
         if args.interactive:
             # Use the paged display mode
-            paged_display(result_df, args.rows, args.table_format)
+            paged_display(result_df, args.rows, args.table_format, columns=args.columns)
         else:
             # Print summary info and display table
             display = DataFrameDisplay()
             display.show_table(result_df, args.rows)
+            
+            # Show memory usage if reader is available
+            if hasattr(reader, 'get_memory_usage_mb'):
+                current_memory = reader.get_memory_usage_mb()
+                if current_memory > 0:
+                    print(f"\nMemory usage: {current_memory:.1f} MB")
 
 
 if __name__ == "__main__":

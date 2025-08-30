@@ -87,8 +87,22 @@ class ParquetReader:
         # Check if we should use lazy loading based on file size
         use_lazy_loading = self._should_use_lazy_loading(file_size)
 
-        # Attempt to read the Parquet file with specific error handling
+        # Always try to get file metadata for potential lazy loading operations
         try:
+            # Get file metadata first (for file_info)
+            try:
+                parquet_file = pq.ParquetFile(file_path)
+                self._parquet_file = parquet_file
+                self._file_info = {
+                    'num_rows': parquet_file.metadata.num_rows,
+                    'num_columns': len(parquet_file.schema_arrow),
+                    'schema': parquet_file.schema_arrow
+                }
+            except Exception:
+                # If we can't get metadata, file_info will remain None
+                pass
+
+            # Attempt to read the Parquet file with specific error handling
             if use_lazy_loading:
                 df = self._read_with_lazy_loading(file_path, columns, row_range)
             else:
@@ -252,14 +266,12 @@ class ParquetReader:
         Returns:
             DataFrame or None if error
         """
-        # Open the parquet file with pyarrow for metadata inspection
-        parquet_file = pq.ParquetFile(file_path)
-        self._parquet_file = parquet_file
-        self._file_info = {
-            'num_rows': parquet_file.metadata.num_rows,
-            'num_columns': len(parquet_file.schema_arrow),
-            'schema': parquet_file.schema_arrow
-        }
+        # Use the already-loaded parquet file metadata
+        parquet_file = self._parquet_file
+        if parquet_file is None:
+            # Fallback if metadata wasn't loaded earlier
+            parquet_file = pq.ParquetFile(file_path)
+            self._parquet_file = parquet_file
 
         # Print memory-efficient loading message
         print(f"Using memory-efficient loading for large file ({parquet_file.metadata.num_rows:,} rows, {len(parquet_file.schema_arrow)} columns)")

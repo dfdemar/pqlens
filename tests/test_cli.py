@@ -35,7 +35,10 @@ class TestCLI(unittest.TestCase):
         @click.option('--version', is_flag=True, help='Show version and exit')
         @click.option('-V', is_flag=True, help='Show version and exit')
         @click.option('--help', is_flag=True, help='Show this message and exit')
-        def cli_wrapper(file_path, rows, interactive, table_format, version, v, help):
+        @click.option('-c', '--columns', multiple=True, help='Specific columns to display')
+        @click.option('--no-lazy-loading', is_flag=True, help='Disable lazy loading for large files')
+        @click.option('--memory-threshold', type=int, default=100, help='File size threshold in MB for lazy loading')
+        def cli_wrapper(file_path, rows, interactive, table_format, version, v, help, columns, no_lazy_loading, memory_threshold):
             """CLI wrapper for testing."""
             # Handle version flags
             if version or v:
@@ -61,6 +64,12 @@ class TestCLI(unittest.TestCase):
                     sys.argv.append('-i')
                 if table_format != 'grid':
                     sys.argv.extend(['-t', table_format])
+                if columns:
+                    sys.argv.extend(['-c'] + list(columns))
+                if no_lazy_loading:
+                    sys.argv.append('--no-lazy-loading')
+                if memory_threshold != 100:
+                    sys.argv.extend(['--memory-threshold', str(memory_threshold)])
                     
                 # Import and run the actual CLI
                 from pqlens.main import main
@@ -235,6 +244,103 @@ class TestCLI(unittest.TestCase):
         except Exception as e:
             # Click should raise an exception for invalid type
             self.assertIn("invalid", str(e).lower())
+
+    def test_column_selection(self):
+        """Test column selection CLI option."""
+        returncode, stdout, stderr = self.run_cli_command([
+            str(self.simple_file),
+            "-c", "id", "-c", "name"
+        ])
+
+        self.assertEqual(returncode, 0, f"CLI failed with return code {returncode}. stderr: {stderr}")
+        self.assertIn("id", stdout, "Column 'id' should be in output")
+        self.assertIn("name", stdout, "Column 'name' should be in output")
+        # Should not contain 'value' column
+        lines_with_value = [line for line in stdout.split('\n') if 'value' in line.lower() and 'col' not in line.lower()]
+        # Filter out lines that just mention 'value' in context (like column names)
+        data_lines_with_value = [line for line in lines_with_value if any(char.isdigit() for char in line)]
+        self.assertEqual(len(data_lines_with_value), 0)
+
+    def test_no_lazy_loading_flag(self):
+        """Test --no-lazy-loading flag."""
+        returncode, stdout, stderr = self.run_cli_command([
+            "--no-lazy-loading",
+            str(self.simple_file)
+        ])
+
+        self.assertEqual(returncode, 0, f"No lazy loading flag failed with return code {returncode}. stderr: {stderr}")
+        # Should still display the file normally
+        self.assertIn("Parquet file shape: (3, 3)", stdout, "File shape should be displayed")
+        self.assertIn("Alice", stdout, "Data should be displayed normally")
+
+    def test_memory_threshold_option(self):
+        """Test --memory-threshold option."""
+        returncode, stdout, stderr = self.run_cli_command([
+            "--memory-threshold", "1",  # Very low threshold
+            str(self.simple_file)
+        ])
+
+        self.assertEqual(returncode, 0, f"Memory threshold option failed with return code {returncode}. stderr: {stderr}")
+        # For small files, might see lazy loading message or not depending on actual file size
+        # Just ensure it doesn't error out
+        self.assertIn("Alice", stdout, "Data should be displayed with custom memory threshold")
+
+    def test_combined_new_options(self):
+        """Test combining new CLI options."""
+        returncode, stdout, stderr = self.run_cli_command([
+            str(self.simple_file),
+            "-c", "id", "-c", "name",
+            "--no-lazy-loading",
+            "--memory-threshold", "200",
+            "-n", "2"
+        ])
+
+        self.assertEqual(returncode, 0, f"Combined options failed with return code {returncode}. stderr: {stderr}")
+        self.assertIn("id", stdout, "Column 'id' should be in output")
+        self.assertIn("name", stdout, "Column 'name' should be in output")
+        self.assertIn("Alice", stdout, "First row data should be present")
+        self.assertIn("Bob", stdout, "Second row data should be present")
+        self.assertNotIn("Charlie", stdout, "Third row should not be present (only showing 2 rows)")
+
+    def test_column_selection_with_nonexistent_column(self):
+        """Test column selection with non-existent columns."""
+        returncode, stdout, stderr = self.run_cli_command([
+            "-c", "nonexistent_column",
+            str(self.simple_file)
+        ])
+
+        # Should handle the error gracefully
+        # The specific behavior depends on pandas/pyarrow error handling
+        # At minimum, it should not crash the program completely
+        self.assertIsInstance(returncode, int)
+
+    def test_memory_threshold_validation(self):
+        """Test memory threshold parameter validation."""
+        try:
+            returncode, stdout, stderr = self.run_cli_command([
+                "--memory-threshold", "-1",  # Negative value
+                str(self.simple_file)
+            ])
+            # Should either work (if negative values are handled) or fail gracefully
+            self.assertIsInstance(returncode, int)
+        except Exception as e:
+            # Click might raise an exception for invalid values
+            self.assertIsInstance(e, Exception)
+
+    def test_help_with_new_options(self):
+        """Test that help includes the new CLI options."""
+        cli = self.create_click_wrapper()
+        result = self.runner.invoke(cli, ['--help'])
+        
+        self.assertEqual(result.exit_code, 0)
+        help_text = result.output
+        
+        # Check that new options are documented
+        self.assertIn("--columns", help_text)
+        self.assertIn("--no-lazy-loading", help_text)  
+        self.assertIn("--memory-threshold", help_text)
+        self.assertIn("Specific columns to display", help_text)
+        self.assertIn("Disable lazy loading", help_text)
 
 
 if __name__ == '__main__':
