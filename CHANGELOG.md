@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-08-30
+
+### Memory Optimization & Lazy Loading
+
+Added comprehensive memory optimization with lazy loading for large Parquet files.
+
+### Added
+
+- **Lazy Loading System**: Automatic memory-efficient loading for files >100MB or >50% available RAM
+- **Memory Monitoring**: Real-time memory usage tracking and intelligent threshold detection  
+- **Column Selection**: `pqlens file.parquet --columns id name` for selective data loading
+- **Enhanced CLI**: New options `--no-lazy-loading` and `--memory-threshold <MB>`
+- **Interactive Mode**: On-demand chunk loading with cached navigation for large datasets
+
+### Enhanced  
+
+- **ParquetReader**: Added `columns`, `row_range`, and memory optimization parameters
+- **InteractiveViewer**: Lazy data loading with intelligent caching for smooth navigation
+- **Dependencies**: Added `psutil` for memory monitoring
+
+### Technical
+
+- **Backward compatible**: All existing APIs and CLI commands unchanged
+- **Performance**: Handle files larger than available RAM with chunked processing
+
 ## [0.2.0] - 2025-08-27
 
 ### Major Architectural Refactoring
@@ -85,7 +110,6 @@ This release introduces a complete modular architecture while maintaining 100% b
 
 ### Testing Framework
 
-- **33 tests** across 3 test modules with 100% pass rate
 - **Unit tests** (`test_parquet_viewer.py`): Core functions with various data types and edge cases
 - **Integration tests** (`test_cli.py`): Full CLI functionality via subprocess (real behavior testing)
 - **Package tests** (`test_package.py`): Import structure, version management, API exports
