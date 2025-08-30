@@ -33,9 +33,9 @@ Usage:
 
 import sys
 
-from .core.reader import ParquetReader
 from .core.display import DataFrameDisplay
 from .core.interactive import InteractiveViewer
+from .core.reader import ParquetReader
 
 
 # Check for required dependencies
@@ -60,6 +60,13 @@ missing_required = [pkg for pkg in required_packages if not check_package(pkg)]
 if missing_required:
     print(f"ERROR: Missing required packages: {', '.join(missing_required)}")
     sys.exit(1)
+
+# Check psutil for memory monitoring
+try:
+    import psutil
+except ImportError:
+    print("WARNING: psutil not available - memory monitoring disabled")
+    print("Install with: pip install psutil")
 
 # Check optional packages
 [check_package(pkg) for pkg in optional_packages]

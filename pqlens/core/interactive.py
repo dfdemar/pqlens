@@ -2,6 +2,8 @@
 Interactive viewer with navigation
 """
 
+from typing import Optional
+
 import pandas as pd
 
 from ..formatters.simple import SimpleFormatter
@@ -25,17 +27,24 @@ except ImportError:
 class InteractiveViewer:
     """Interactive DataFrame viewer with arrow key navigation."""
 
-    def __init__(self, df: pd.DataFrame, display=None, terminal_helper=None):
+    def __init__(self, df: pd.DataFrame = None, display=None, terminal_helper=None, parquet_reader=None, file_path: str = None):
         """
-        Initialize interactive viewer.
+        Initialize interactive viewer with lazy loading support.
         
         Args:
-            df: DataFrame to display interactively
+            df: DataFrame to display interactively (optional if using lazy loading)
             display: Display instance to use (optional)
             terminal_helper: TerminalHelper instance (optional)
+            parquet_reader: ParquetReader instance for lazy loading (optional)
+            file_path: Path to parquet file for lazy loading (optional)
         """
         self.df = df
         self.terminal = terminal_helper or TerminalHelper()
+        self.parquet_reader = parquet_reader
+        self.file_path = file_path
+        self.lazy_loading_enabled = parquet_reader is not None and file_path is not None
+        self.cached_chunks = {}  # Cache for loaded data chunks
+        self.chunk_size = 1000  # Number of rows per chunk for lazy loading
 
         # Set up formatter
         if display is not None:
@@ -60,13 +69,21 @@ class InteractiveViewer:
         self.table_border_width = 4
         self.extra_space = 10
 
-    def start_interactive_mode(self, page_size: int = 10, table_format: str = 'grid') -> None:
+        # For lazy loading, get file info if available
+        if self.lazy_loading_enabled:
+            self.file_info = self.parquet_reader.get_file_info()
+            if self.file_info:
+                print(f"Lazy loading enabled for {self.file_info['num_rows']:,} rows, {self.file_info['num_columns']} columns")
+                print(f"Memory usage: {self.parquet_reader.get_memory_usage_mb():.1f} MB")
+
+    def start_interactive_mode(self, page_size: int = 10, table_format: str = 'grid', columns: list = None) -> None:
         """
-        Start the interactive navigation mode.
+        Start the interactive navigation mode with lazy loading support.
         
         Args:
             page_size: Number of rows to show per page
             table_format: Table format style ('grid', 'fancy_grid', etc.)
+            columns: Optional list of columns to display (for memory efficiency)
         """
         # Validate parameters
         try:
@@ -78,21 +95,39 @@ class InteractiveViewer:
             print(f"Warning: Invalid page_size '{page_size}', using default of 10")
             page_size = 10
 
-        if self.df is None:
+        # Handle lazy loading mode
+        if self.lazy_loading_enabled and self.df is None:
+            if not self.file_info:
+                print("No file information available for lazy loading")
+                return
+
+            # For lazy loading, we'll get the total row/column counts from file info
+            total_rows = self.file_info['num_rows']
+            total_cols = self.file_info['num_columns']
+
+            if total_cols == 0:
+                print("\nThis Parquet file has no columns.")
+                print("It contains only row metadata without any data columns.")
+                if total_rows > 0:
+                    print(f"Number of rows: {total_rows}")
+                print("\nNothing to display in interactive mode.")
+                return
+
+            if total_rows == 0:
+                print(f"\nDataFrame has {total_cols} columns but no data rows.")
+                print("\nNothing to navigate in interactive mode.")
+                return
+        elif self.df is None:
             print("No data to display - DataFrame is None")
             return
-
-        # Handle zero columns case
-        if len(self.df.columns) == 0:
+        elif len(self.df.columns) == 0:
             print("\nThis Parquet file has no columns.")
             print("It contains only row metadata without any data columns.")
             if len(self.df) > 0:
                 print(f"Number of rows: {len(self.df)}")
             print("\nNothing to display in interactive mode.")
             return
-
-        # Handle empty DataFrame (has columns but no rows)
-        if self.df.empty:
+        elif self.df.empty:
             print("\nDataFrame has columns but no data rows.")
             print(f"Columns ({len(self.df.columns)}): {list(self.df.columns)}")
             print(f"Column types:\n{self.df.dtypes}")
@@ -100,23 +135,35 @@ class InteractiveViewer:
             return
 
         # Print summary information once at the beginning
-        print(f"\nParquet file shape: {self.df.shape}")
-        print(f"Column types:\n{self.df.dtypes}\n")
+        if self.lazy_loading_enabled and self.df is None:
+            print(f"\nParquet file shape: ({self.file_info['num_rows']:,}, {self.file_info['num_columns']})")
+            print("Column information available on demand with lazy loading\n")
+        else:
+            print(f"\nParquet file shape: {self.df.shape}")
+            print(f"Column types:\n{self.df.dtypes}\n")
 
         # Start navigation
-        self._handle_navigation(page_size, table_format)
+        self._handle_navigation(page_size, table_format, columns)
 
-    def _handle_navigation(self, page_size: int, table_format: str) -> None:
+    def _handle_navigation(self, page_size: int, table_format: str, columns: list = None) -> None:
         """
-        Handle the navigation loop.
+        Handle the navigation loop with lazy loading support.
         
         Args:
             page_size: Number of rows per page
             table_format: Table format style
+            columns: Optional list of columns to display
         """
-        total_rows = len(self.df)
-        total_cols = len(self.df.columns)
+        if self.lazy_loading_enabled and self.df is None:
+            total_rows = self.file_info['num_rows']
+            total_cols = self.file_info['num_columns']
+        else:
+            total_rows = len(self.df)
+            total_cols = len(self.df.columns)
         total_pages = (total_rows + page_size - 1) // page_size  # Ceiling division
+
+        # Store selected columns for lazy loading
+        self.selected_columns = columns
 
         # Initial display
         self._refresh_display(page_size, table_format, total_rows, total_cols, total_pages)
@@ -217,7 +264,7 @@ class InteractiveViewer:
 
     def _refresh_display(self, page_size: int, table_format: str,
                          total_rows: int, total_cols: int, total_pages: int) -> None:
-        """Refresh the display with current navigation state."""
+        """Refresh the display with current navigation state and lazy loading."""
         # Clear screen
         self.terminal.clear_screen()
 
@@ -227,19 +274,29 @@ class InteractiveViewer:
         # Calculate current page number for display purposes
         current_page = self.start_row // page_size
 
+        # Get data for current view (lazy loading if enabled)
+        view_df = self._get_view_data(self.start_row, end_idx)
+
+        if view_df is None:
+            print("Error loading data for current view")
+            return
+
         # Get columns that fit in the current terminal width
-        visible_cols = self._get_visible_columns()
+        visible_cols = self._get_visible_columns(view_df)
 
-        # Display page header and navigation info
-        print(f"\n--- Showing rows {self.start_row + 1}-{end_idx} of {total_rows} (Page {current_page + 1}/{total_pages}) ---")
+        # Display page header and navigation info with memory usage
+        memory_info = ""
+        if self.parquet_reader:
+            current_memory = self.parquet_reader.get_memory_usage_mb()
+            if current_memory > 0:
+                memory_info = f" | Memory: {current_memory:.1f}MB"
+
+        print(f"\n--- Showing rows {self.start_row + 1}-{end_idx} of {total_rows:,} (Page {current_page + 1}/{total_pages}) ---")
         col_range_text = f"Columns {self.left_col_idx + 1}-{self.left_col_idx + len(visible_cols)} of {total_cols}"
-        print(f"Navigation: ↑↓ Move one row | Page Up/Down: Move full page | ←→ Scroll Columns | q Quit | {col_range_text}\n")
-
-        # Get current view data
-        view_df = self.df.iloc[self.start_row:end_idx]
+        print(f"Navigation: ↑↓ Move one row | Page Up/Down: Move full page | ←→ Scroll Columns | (Q)uit | {col_range_text}{memory_info}\n")
 
         # Select only visible columns for display
-        if visible_cols:  # If we have any visible data columns
+        if visible_cols and len(visible_cols) > 0:  # If we have any visible data columns
             display_df = view_df.iloc[:, visible_cols]
             try:
                 # Format the DataFrame to control column widths
@@ -258,7 +315,7 @@ class InteractiveViewer:
                 print("Row indices:", list(view_df.index))
             print("\nTerminal too narrow to display any data columns. Resize terminal or use horizontal scrolling.")
 
-    def _get_visible_columns(self):
+    def _get_visible_columns(self, df):
         """Determine which columns can fit in the current terminal width."""
         terminal_width, _ = self.terminal.get_size()
 
@@ -268,13 +325,13 @@ class InteractiveViewer:
 
         visible_cols = []
         col_idx = self.left_col_idx  # Start from current horizontal scroll position
-        total_cols = len(self.df.columns)
+        total_cols = len(df.columns)
 
         # Add columns until we run out of space
         while col_idx < total_cols and available_width > self.min_col_width:
-            col_name = self.df.columns[col_idx]
+            col_name = df.columns[col_idx]
             # Get sample values to estimate column width
-            sample_values = self.df.iloc[:min(10, len(self.df)), col_idx].astype(str)
+            sample_values = df.iloc[:min(10, len(df)), col_idx].astype(str)
             max_data_width = sample_values.str.len().max() if len(sample_values) > 0 else 0
 
             # Estimate column width (max of column name and data width, capped at max_col_width)
@@ -307,3 +364,48 @@ class InteractiveViewer:
                 lambda x: x[:self.max_col_width - 3] + '...' if len(x) > self.max_col_width else x)
 
         return formatted_df
+
+    def _get_view_data(self, start_row: int, end_row: int) -> Optional[pd.DataFrame]:
+        """
+        Get data for the current view, using lazy loading if enabled.
+        
+        Args:
+            start_row: Starting row index
+            end_row: Ending row index
+            
+        Returns:
+            DataFrame for the specified row range
+        """
+        if self.lazy_loading_enabled and self.df is None:
+            # Use lazy loading to get only the needed rows
+            chunk_key = (start_row, end_row)
+
+            # Check cache first
+            if chunk_key in self.cached_chunks:
+                return self.cached_chunks[chunk_key]
+
+            # Load the data chunk
+            try:
+                row_range = (start_row, end_row)
+                columns = self.selected_columns if hasattr(self, 'selected_columns') else None
+                chunk_df = self.parquet_reader.read_file(
+                    self.file_path,
+                    columns=columns,
+                    row_range=row_range
+                )
+
+                # Cache the chunk (limit cache size to avoid memory issues)
+                if len(self.cached_chunks) > 10:  # Keep only last 10 chunks
+                    # Remove oldest chunk
+                    oldest_key = next(iter(self.cached_chunks))
+                    del self.cached_chunks[oldest_key]
+
+                self.cached_chunks[chunk_key] = chunk_df
+                return chunk_df
+
+            except Exception as e:
+                print(f"Error loading data chunk: {e}")
+                return None
+        else:
+            # Use the existing DataFrame
+            return self.df.iloc[start_row:end_row] if self.df is not None else None
